@@ -1,0 +1,189 @@
+/* ================================
+   TERMINAL SECTION (Modern IDE)
+================================ */
+
+.terminal-section {
+  position: relative;
+  min-height: 180px;
+  height: 240px;
+  max-height: 70vh;
+
+  display: flex;
+  flex-direction: column;
+
+  background: linear-gradient(
+    to bottom,
+    #1c1c1f,
+    #18181b
+  );
+
+  border-top: 1px solid #2a2a2e;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
+
+  resize: vertical;
+  overflow: hidden;
+}
+
+/* Drag Handle */
+
+.terminal-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  border-radius: 4px;
+  background: #3a3a3f;
+  margin-top: 6px;
+  opacity: 0.6;
+}
+
+/* ================================
+   TERMINAL TABS BAR
+================================ */
+
+.terminal-tabs {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+
+  background: rgba(36, 36, 40, 0.95);
+  backdrop-filter: blur(6px);
+
+  border-bottom: 1px solid #2a2a2e;
+
+  overflow-x: auto;
+}
+
+.terminal-tabs::-webkit-scrollbar {
+  height: 6px;
+}
+
+.terminal-tabs::-webkit-scrollbar-thumb {
+  background: #3e3e42;
+  border-radius: 6px;
+}
+
+/* ================================
+   TERMINAL TAB
+================================ */
+
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-width: 140px;
+  padding: 6px 12px;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  color: #aaa;
+  background: #2a2a2e;
+
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+
+  transition: all 160ms ease;
+}
+
+.terminal-tab:hover {
+  background: #333338;
+  color: #fff;
+}
+
+/* ACTIVE TAB */
+
+.terminal-tab.active {
+  background: #1e1e1e;
+  color: #fff;
+  border-top: 2px solid #4f9cff;
+  box-shadow: inset 0 -1px 0 #1e1e1e;
+}
+
+/* ================================
+   TERMINAL TITLE
+================================ */
+
+.terminal-title {
+  white-space: nowrap;
+  margin-right: 10px;
+}
+
+/* ================================
+   TERMINAL ACTION BUTTONS
+================================ */
+
+.terminal-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-actions button {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.terminal-actions button:hover {
+  background: #3c3c3c;
+  color: #fff;
+}
+
+/* STOP */
+
+.terminal-actions button[title="Stop"] {
+  color: #f0ad4e;
+}
+
+/* RESTART */
+
+.terminal-actions button[title="Restart"] {
+  color: #4f9cff;
+}
+
+/* CLEAR */
+
+.terminal-actions button[title="Clear"] {
+  color: #6ccf8e;
+}
+
+/* KILL */
+
+.kill-btn {
+  color: #ff5c5c;
+}
+
+.kill-btn:hover {
+  background: rgba(255, 92, 92, 0.15);
+  color: #ff7a7a;
+}
+
+/* ================================
+   TERMINAL PANEL
+================================ */
+
+.terminal-panel {
+  flex: 1;
+  overflow: hidden;
+  padding: 10px;
+  background: #1e1e1e;
+}
+
+/* Smooth animation while resizing */
+
+.terminal-section,
+.terminal-panel {
+  transition: height 150ms ease;
+}

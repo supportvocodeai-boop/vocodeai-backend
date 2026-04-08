@@ -1,0 +1,504 @@
+/* =========================
+   GLOBAL VARIABLES
+========================= */
+
+:root {
+  --green-main: #00ff99;
+  --green-soft: rgba(0, 255, 153, 0.25);
+  --bg-dark: #0f1115;
+}
+
+/* =========================
+   PAGE BACKGROUND + GRID
+========================= */
+
+.auth-page,
+.oauth-success-container {
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 255, 153, 0.04) 0px,
+      rgba(0, 255, 153, 0.04) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 255, 153, 0.04) 0px,
+      rgba(0, 255, 153, 0.04) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    radial-gradient(circle at top, rgba(0, 255, 153, 0.10), transparent 45%),
+    radial-gradient(circle at bottom, rgba(0, 200, 120, 0.08), transparent 50%),
+    var(--bg-dark);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: system-ui, sans-serif;
+  color: #e6f7f1;
+}
+
+/* =========================
+   AUTH CARD
+========================= */
+
+.auth-card,
+.oauth-success-card {
+  position: relative;
+  width: 380px;
+  padding: 28px 30px;
+  border-radius: 14px;
+
+  background: linear-gradient(
+    180deg,
+    rgba(28, 32, 36, 0.96),
+    rgba(18, 20, 24, 0.96)
+  );
+
+  border: 1px solid var(--green-soft);
+
+  box-shadow:
+    0 0 30px rgba(0, 255, 153, 0.18),
+    0 30px 90px rgba(0, 0, 0, 0.85);
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  animation: borderPulse 4s ease-in-out infinite;
+}
+
+/* INNER GLOW */
+.auth-card::before,
+.oauth-success-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+
+  box-shadow:
+    inset 0 1px 0 rgba(0, 255, 153, 0.35),
+    inset 0 -1px 0 rgba(0, 255, 153, 0.25);
+}
+
+/* =========================
+   LOGO
+========================= */
+
+.auth-logo {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-logo img {
+  width: 200px;
+  max-height: 110px;
+  filter: drop-shadow(0 0 16px rgba(0, 255, 153, 0.7));
+  animation: logoBoot 1.2s ease-out forwards;
+}
+
+/* =========================
+   HEADERS
+========================= */
+
+.auth-card h2,
+.oauth-success-card h2 {
+  text-align: center;
+  margin: 4px 0;
+  font-size: 20px;
+  color: #dfffee;
+}
+
+.auth-subtitle {
+  text-align: center;
+  font-size: 13px;
+  color: #7dffd0;
+  margin-bottom: 10px;
+}
+
+/* =========================
+   INPUTS
+========================= */
+
+.auth-card input,
+.phone-group select {
+  background: #0f1317;
+  border: 1px solid #1f3a30;
+  color: #eafff6;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.25s ease;
+}
+
+.auth-card input::placeholder {
+  color: #6fae96;
+}
+
+.auth-card input:focus,
+.phone-group select:focus {
+  outline: none;
+  border-color: var(--green-main);
+  box-shadow:
+    0 0 0 2px rgba(0, 255, 153, 0.15),
+    0 0 18px rgba(0, 255, 153, 0.35);
+}
+
+/* =========================
+   PHONE GROUP
+========================= */
+
+.phone-group {
+  display: flex;
+  gap: 10px;
+}
+
+.phone-group select {
+  width: 110px;
+  appearance: none;
+}
+
+.phone-group input {
+  flex: 1;
+}
+
+/* =========================
+   OTP INPUT
+========================= */
+
+.otp-input {
+  letter-spacing: 6px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.primary-btn {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #00ff99, #00c878);
+  border: none;
+  padding: 12px;
+  color: #022318;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(0, 255, 153, 0.45);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================
+   GOOGLE BUTTON
+========================= */
+
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #0f1317;
+  border: 1px solid #1f3a30;
+  color: #dfffee;
+  padding: 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.google-btn img {
+  width: 18px;
+}
+
+.google-btn:hover {
+  background: #151b1f;
+  box-shadow: 0 0 20px rgba(0, 255, 153, 0.2);
+}
+
+/* =========================
+   FORGOT LINK
+========================= */
+
+.auth-forgot {
+  text-align: right;
+  font-size: 12px;
+}
+
+.auth-forgot span,
+.auth-switch span,
+.auth-back span {
+  color: #7dffd0;
+  cursor: pointer;
+}
+
+.auth-forgot span:hover,
+.auth-switch span:hover,
+.auth-back span:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   DIVIDER
+========================= */
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+  font-size: 11px;
+  color: #6fae96;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #1f3a30;
+}
+
+/* =========================
+   ERROR + SUCCESS
+========================= */
+
+.auth-error {
+  background: rgba(255, 60, 60, 0.15);
+  color: #ffbebe;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid rgba(255, 60, 60, 0.3);
+}
+
+.auth-success {
+  background: rgba(0, 255, 153, 0.15);
+  color: #7dffd0;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid rgba(0, 255, 153, 0.35);
+  text-align: center;
+}
+
+/* =========================
+   OAUTH SUCCESS
+========================= */
+
+.oauth-check {
+  font-size: 60px;
+  color: var(--green-main);
+  margin-bottom: 10px;
+  animation: popSuccess 0.6s ease-out forwards;
+}
+
+.oauth-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(0, 255, 153, 0.2);
+  border-top: 3px solid var(--green-main);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+/* =========================
+   ANIMATIONS
+========================= */
+
+@keyframes logoBoot {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes borderPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 30px rgba(0, 255, 153, 0.18),
+      0 30px 90px rgba(0, 0, 0, 0.85);
+  }
+  50% {
+    box-shadow:
+      0 0 50px rgba(0, 255, 153, 0.35),
+      0 30px 90px rgba(0, 0, 0, 0.85);
+  }
+}
+
+@keyframes popSuccess {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* =========================================
+   RESPONSIVE DESIGN - AUTH PAGES
+========================================= */
+
+/* ========== LARGE TABLETS (≤ 1024px) ========== */
+@media (max-width: 1024px) {
+
+  .auth-card,
+  .oauth-success-card {
+    width: 420px;
+  }
+
+  .auth-logo img {
+    width: 170px;
+  }
+
+  .auth-card h2 {
+    font-size: 22px;
+  }
+}
+
+
+/* ========== TABLETS (≤ 768px) ========== */
+@media (max-width: 768px) {
+
+  .auth-page,
+  .oauth-success-container {
+    padding: 30px 20px;
+    align-items: center;
+  }
+
+  .auth-card,
+  .oauth-success-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 26px 24px;
+  }
+
+  .auth-logo img {
+    width: 160px;
+  }
+
+  .auth-card input,
+  .phone-group select {
+    font-size: 15px;
+  }
+
+  .primary-btn,
+  .google-btn {
+    font-size: 15px;
+  }
+
+  .auth-switch {
+    text-align: center;
+  }
+}
+
+
+/* ========== MOBILE (≤ 480px) ========== */
+@media (max-width: 480px) {
+
+  .auth-page,
+  .oauth-success-container {
+    padding: 20px 16px;
+  }
+
+  .auth-card,
+  .oauth-success-card {
+    width: 100%;
+    padding: 22px 18px;
+    border-radius: 12px;
+  }
+
+  .auth-logo img {
+    width: 140px;
+    max-height: 90px;
+  }
+
+  .auth-card h2 {
+    font-size: 18px;
+  }
+
+  .auth-card input,
+  .phone-group select {
+    padding: 11px;
+    font-size: 14px;
+  }
+
+  .phone-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .phone-group select {
+    width: 100%;
+  }
+
+  .primary-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .google-btn {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  .auth-forgot {
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  .auth-divider {
+    margin: 14px 0;
+  }
+}
+
+
+/* ========== SMALL MOBILE (≤ 360px) ========== */
+@media (max-width: 360px) {
+
+  .auth-card,
+  .oauth-success-card {
+    padding: 18px 14px;
+  }
+
+  .auth-card input,
+  .phone-group select {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .primary-btn,
+  .google-btn {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  .auth-card h2 {
+    font-size: 16px;
+  }
+}

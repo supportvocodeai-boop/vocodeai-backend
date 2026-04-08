@@ -1,0 +1,141 @@
+/* ROOT */
+.file-explorer {
+  font-size: 12.5px;
+  padding: 6px 4px;
+  color: #d4d4d4;
+}
+
+/* TREE STRUCTURE */
+.tree-node {
+  margin-left: 12px;
+}
+
+/* ROW BASE */
+.tree-row {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 5px;
+  min-height: 24px;
+  transition: background 120ms ease;
+}
+
+/* HOVER */
+.tree-row:hover {
+  background: #2a2d2e;
+}
+
+/* ACTIVE FILE */
+.tree-row.active {
+  background: #37373d;
+  outline: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* LEFT PART */
+.tree-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ARROW */
+.arrow {
+  width: 14px;
+  text-align: center;
+  color: #8c8c8c;
+  font-size: 11px;
+}
+
+/* ICONS */
+.icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.folder-icon {
+  background: url("/icons/folder.svg") center / contain no-repeat;
+}
+
+.file-icon {
+  background: url("/icons/file.svg") center / contain no-repeat;
+}
+
+.file-icon-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* FILE / FOLDER NAME */
+.name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+/* DIRTY DOT */
+.dirty-dot {
+  color: #e5c07b;
+  font-size: 10px;
+  margin-left: 6px;
+}
+
+/* ACTIONS (RIGHT SIDE ICONS) */
+.tree-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.tree-row:hover .tree-actions {
+  opacity: 1;
+}
+
+.tree-actions button {
+  background: none;
+  border: none;
+  color: #9da1a6;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.tree-actions button:hover {
+  background: #3e3e42;
+  color: white;
+}
+
+/* RENAME / CREATE INPUT */
+.rename-input {
+  background: #1e1e1e;
+  border: 1px solid #3c3c3c;
+  color: white;
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  width: 140px;
+  outline: none;
+}
+
+.rename-input:focus {
+  border-color: #007acc;
+  box-shadow: 0 0 0 1px rgba(0, 122, 204, 0.4);
+}
+
+/* CREATE ROW */
+.tree-row.creating {
+  background: #252526;
+}
+
+/* INDENT */
+.file-indent {
+  width: 16px;
+}

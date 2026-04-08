@@ -1,0 +1,45 @@
+/* ========== EDITOR TABS ========== */
+
+.tabs-bar {
+  display: flex;
+  background: #252526;
+  border-bottom: 1px solid #333;
+}
+
+.tab {
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab.active {
+  background: #1e1e1e;
+}
+
+.close {
+  margin-left: 6px;
+  color: #888;
+}
+
+.dirty-dot {
+  color: orange;
+}
+
+/* ========== TERMINAL TABS ========== */
+
+.terminal-tabs {
+  display: flex;
+  background: #252526;
+  border-top: 1px solid #333;
+}
+
+.terminal-tab {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.terminal-tab.active {
+  background: #1e1e1e;
+}

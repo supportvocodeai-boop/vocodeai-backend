@@ -1,0 +1,71 @@
+/* =========================
+   WORKSPACE LAYOUT
+========================= */
+
+.workspace {
+  display: flex;
+  height: calc(100vh - 48px);
+  background: #1e1e1e;
+}
+
+/* =========================
+   SIDEBAR RESIZE
+========================= */
+
+.sidebar-wrapper {
+  display: flex;
+  height: 100%;
+  position: relative;
+}
+
+.sidebar-resizer {
+  width: 6px;
+  cursor: col-resize;
+}
+
+.sidebar-resizer:hover {
+  background: rgba(0, 122, 204, 0.25);
+}
+
+/* =========================
+   MAIN AREA
+========================= */
+
+.workspace-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* =========================
+   EDITOR
+========================= */
+
+.editor-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* =========================
+   TERMINAL RESIZE
+========================= */
+
+.terminal-section {
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+  border-top: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.terminal-resizer {
+  height: 6px;
+  cursor: row-resize;
+}
+
+.terminal-resizer:hover {
+  background: rgba(0, 122, 204, 0.25);
+}
