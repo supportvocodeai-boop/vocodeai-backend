@@ -1,0 +1,80 @@
+/* Navbar background */
+.navbar {
+  width: 100%;
+  background: linear-gradient(to bottom, #05251c, #031a14);
+  border-bottom: 1px solid rgba(0, 255, 170, 0.1);
+}
+
+/* Main container */
+.navbar-inner {
+  max-width: 1400px;
+  margin: auto;
+  padding: 12px 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* LEFT GROUP (IMPORTANT FIX) */
+.left-group {
+  display: flex;
+  align-items: center;
+  gap: 40px; /* controls space between logo & links */
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon {
+  color: #00ffae;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.text {
+  color: #cffff0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Links */
+.links {
+  display: flex;
+  gap: 30px;
+  list-style: none;
+}
+
+.links li {
+  color: #b6e7d6;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* Subtle hover like your UI */
+.links li:hover {
+  color: #00ffae;
+}
+
+/* Button */
+.btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid #00ffae;
+  background: transparent;
+  color: #00ffae;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* Glow hover */
+.btn:hover {
+  background: rgba(0, 255, 174, 0.1);
+  box-shadow: 0 0 10px rgba(0, 255, 174, 0.4);
+}

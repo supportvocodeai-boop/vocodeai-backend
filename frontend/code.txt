@@ -1,0 +1,2519 @@
+import Editor from "@monaco-editor/react";
+import { useWorkspace } from "../../context/WorkspaceContext";
+import { useRef } from "react";
+import { LANGUAGE_META } from "../../config/languages";
+import "../../styles/editor.css";
+
+export default function CodeEditor() {
+  const { activeFile, fileContents, updateContent } = useWorkspace();
+  const editorRef = useRef(null);
+
+  if (!activeFile) {
+    return <div className="editor-empty">Open a file to start coding</div>;
+  }
+
+  const ext = activeFile.split(".").pop();
+
+  // ✅ FIX
+  const meta = ext ? LANGUAGE_META[ext] || {} : {};
+
+  return (
+    <Editor
+      key={activeFile}
+      theme="vs-dark"
+      language={meta.monaco || "plaintext"}
+      value={fileContents[activeFile] || ""}
+      height="100%"
+      options={{
+        fontSize: 14,
+        minimap: { enabled: false },
+        automaticLayout: true,
+      }}
+      onMount={(editor) => {
+        editorRef.current = editor;
+      }}
+      onChange={(value) => {
+        updateContent(activeFile, value || "");
+      }}
+    />
+  );
+}
+import { useWorkspace } from "../../context/WorkspaceContext";
+import "../../styles/editor.css";
+export default function EditorTabs() {
+  const { openTabs, activeFile, openFile, closeTab, dirtyFiles } =
+    useWorkspace();
+
+  return (
+    <div className="tabs-bar">
+      {openTabs.map((file) => (
+        <div
+          key={file}
+          className={`tab ${activeFile === file ? "active" : ""}`}
+          onClick={() => openFile(file)}
+        >
+          {file}
+          {dirtyFiles.has(file) && <span className="dirty-dot">●</span>}
+          <span
+            className="close"
+            onClick={(e) => {
+              e.stopPropagation();
+              closeTab(file);
+            }}
+          >
+            ✕
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+import { useWorkspace } from "../../context/WorkspaceContext";
+import { LANGUAGE_META } from "../../config/languages";
+import "../../styles/editor.css";
+
+export default function RunBar() {
+  const {
+    runCode,
+    runProject,
+    activeFile,
+    refreshPreview,
+    dirtyFiles,
+  } = useWorkspace();
+
+  const isProject = !activeFile;
+  const isHTML = activeFile?.endsWith(".html");
+  const isDirty = activeFile && dirtyFiles.has(activeFile);
+
+  const ext = activeFile?.split(".").pop();
+
+  const meta = ext ? LANGUAGE_META[ext] || {} : {};
+
+  const handleRun = () => {
+    if (isProject) runProject();
+    else if (isHTML) refreshPreview();
+    else runCode();
+  };
+
+  return (
+    <div className="run-bar">
+      <div className="run-bar-left">
+        <span
+          className={`lang-badge ${isProject ? "project" : ""}`}
+          style={!isProject && meta.color ? { background: meta.color } : {}}
+        >
+          {isProject
+            ? "Project"
+            : isHTML
+            ? "HTML"
+            : meta.label || "Text"}
+        </span>
+      </div>
+
+      <div className="run-bar-right">
+        <button className="run-btn" onClick={handleRun}>
+          ▶{" "}
+          {isProject
+            ? "Run Project"
+            : isHTML
+            ? "Preview HTML"
+            : "Run File"}
+        </button>
+      </div>
+    </div>
+  );
+}
+import { useWorkspace } from "../../context/WorkspaceContext";
+import TreeNode from "./TreeNode";
+
+export default function FileExplorer() {
+  const { tree, createRequest } = useWorkspace();
+
+  if (!tree) return null;
+
+  return (
+    <div className="file-explorer">
+      {createRequest && (
+        <TreeNode
+          node={{
+            name: "",
+            type: createRequest.type,
+            isNew: true,
+          }}
+          path={createRequest.parent}
+        />
+      )}
+
+      {tree.children?.map((child) => (
+        <TreeNode key={child.name} node={child} path="" />
+      ))}
+    </div>
+  );
+}
+import { useState, useRef, useEffect } from "react";
+import { useWorkspace } from "../../context/WorkspaceContext";
+import { getFileIcon } from "../../utils/getFileIcon";
+import "../../styles/explorer.css";
+
+export default function TreeNode({ node, path }) {
+  const [open, setOpen] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [tempName, setTempName] = useState(node.name);
+  const [creating, setCreating] = useState(null);
+
+  const inputRef = useRef(null);
+
+  const {
+    openFile,
+    addFile,
+    addFolder,
+    renameNode,
+    deleteNode,
+    activeFile,
+    dirtyFiles,
+    setCreateRequest,
+  } = useWorkspace();
+
+  if (node.name === ".workspace.json") return null;
+
+  const currentPath = path ? `${path}/${node.name}` : node.name;
+
+  const isActive =
+    node.type === "file" && activeFile === currentPath;
+
+  const isDirty = dirtyFiles.has(currentPath);
+
+  useEffect(() => {
+    if ((editing || creating) && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing, creating]);
+
+  const submitRename = () => {
+    if (tempName && tempName !== node.name) {
+      renameNode(currentPath, tempName);
+    }
+    setEditing(false);
+  };
+
+  const cancelRename = () => {
+    setTempName(node.name);
+    setEditing(false);
+  };
+
+  if (node.isNew) {
+    return (
+      <div className="tree-row creating">
+        <span className="file-indent" />
+        <input
+          ref={inputRef}
+          className="rename-input"
+          placeholder={
+            node.type === "file" ? "newFile.ext" : "newFolder"
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.target.value.trim()) {
+              node.type === "file"
+                ? addFile(path, e.target.value.trim())
+                : addFolder(path, e.target.value.trim());
+              setCreateRequest(null);
+            }
+            if (e.key === "Escape") setCreateRequest(null);
+          }}
+        />
+      </div>
+    );
+  }
+
+
+  if (node.type === "folder") {
+    return (
+      <div className="tree-node">
+        <div className="tree-row folder">
+          <div
+            className="tree-left"
+            onClick={() => !editing && setOpen(!open)}
+          >
+            <span className="arrow">
+              {open ? "▼" : "▶"}
+            </span>
+
+            <span className="icon">
+              {getFileIcon(node.name, "folder", open)}
+            </span>
+
+            {editing ? (
+              <input
+                ref={inputRef}
+                className="rename-input"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitRename();
+                  if (e.key === "Escape") cancelRename();
+                }}
+                onBlur={cancelRename}
+              />
+            ) : (
+              <span className="name">{node.name}</span>
+            )}
+          </div>
+
+          {!editing && (
+            <div className="tree-actions">
+              <button onClick={() => setCreating("file")}>
+                ＋📄
+              </button>
+              <button onClick={() => setCreating("folder")}>
+                ＋📁
+              </button>
+              <button onClick={() => setEditing(true)}>✎</button>
+              <button onClick={() => deleteNode(currentPath)}>
+                🗑
+              </button>
+            </div>
+          )}
+        </div>
+
+        {creating && (
+          <div className="tree-row creating">
+            <span className="file-indent" />
+            <input
+              ref={inputRef}
+              className="rename-input"
+              placeholder={
+                creating === "file"
+                  ? "newFile.ext"
+                  : "newFolder"
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.target.value.trim()) {
+                  creating === "file"
+                    ? addFile(currentPath, e.target.value.trim())
+                    : addFolder(
+                        currentPath,
+                        e.target.value.trim()
+                      );
+                  setCreating(null);
+                  setOpen(true);
+                }
+                if (e.key === "Escape") setCreating(null);
+              }}
+              onBlur={() => setCreating(null)}
+            />
+          </div>
+        )}
+
+        {open &&
+          node.children?.map((child) => (
+            <TreeNode
+              key={child.name}
+              node={child}
+              path={currentPath}
+            />
+          ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`tree-row file ${
+        isActive ? "active" : ""
+      }`}
+      onClick={() => !editing && openFile(currentPath)}
+    >
+      <span className="file-indent" />
+
+      <span className="icon">
+        {getFileIcon(node.name, "file")}
+      </span>
+
+      {editing ? (
+        <input
+          ref={inputRef}
+          className="rename-input"
+          value={tempName}
+          onChange={(e) => setTempName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submitRename();
+            if (e.key === "Escape") cancelRename();
+          }}
+          onBlur={cancelRename}
+        />
+      ) : (
+        <span className="name">
+          {node.name}
+          {isDirty && (
+            <span className="dirty-dot">●</span>
+          )}
+        </span>
+      )}
+
+      {!editing && (
+        <div className="tree-actions">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            ✎
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteNode(currentPath);
+            }}
+          >
+            🗑
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  FiFolder,
+  FiTerminal,
+  FiMoreVertical,
+  FiLogOut,
+  FiRefreshCcw,
+  FiHome,
+} from "react-icons/fi";
+import { FaRobot } from "react-icons/fa";
+
+import { useWorkspace } from "../../context/WorkspaceContext";
+import { useAuth } from "../../context/AuthContext";
+import "../../styles/navbar.css";
+
+export default function Navbar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { openNewTerminal, terminals, killTerminal } = useWorkspace();
+  const { logout } = useAuth();
+
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const closeAllTerminals = () => {
+    terminals.forEach((t) => killTerminal(t.id));
+    setOpen(false);
+  };
+
+  return (
+    <header className="navbar">
+      {/* LEFT */}
+      <div
+        className="navbar-left"
+        onClick={() => navigate("/dashboard")}
+      >
+        <img src="/icon.png" alt="Vocodeai" className="logo-img" />
+      </div>
+
+      {/* CENTER */}
+      <nav className="navbar-center">
+        <div
+          className={`nav-tab ${
+            location.pathname === "/dashboard" ? "active" : ""
+          }`}
+          onClick={() => navigate("/dashboard")}
+        >
+          <FiFolder />
+          <span>Files</span>
+        </div>
+
+        <div className="nav-tab" onClick={openNewTerminal}>
+          <FiTerminal />
+          <span>Terminal</span>
+        </div>
+
+        <div className="nav-tab ai-tab">
+          <FaRobot />
+          <span>AI</span>
+        </div>
+      </nav>
+
+      {/* RIGHT */}
+      <div className="navbar-right" ref={menuRef}>
+        <button
+          className="more-btn"
+          onClick={() => setOpen((o) => !o)}
+          aria-label="More options"
+        >
+          <FiMoreVertical />
+        </button>
+
+        {open && (
+          <div className="dropdown">
+            <div className="dropdown-item" onClick={openNewTerminal}>
+              <FiTerminal /> <span>New Terminal</span>
+            </div>
+
+            <div className="dropdown-item" onClick={closeAllTerminals}>
+              <FiTerminal /> <span>Close All Terminals</span>
+            </div>
+
+            <div
+              className="dropdown-item"
+              onClick={() => window.location.reload()}
+            >
+              <FiRefreshCcw /> <span>Reload Workspace</span>
+            </div>
+
+            <div
+              className="dropdown-item"
+              onClick={() => navigate("/dashboard")}
+            >
+              <FiHome /> <span>Dashboard</span>
+            </div>
+
+            <div className="dropdown-separator" />
+
+            <div
+              className="dropdown-item danger"
+              onClick={() => {
+                logout();
+                navigate("/");
+              }}
+            >
+              <FiLogOut /> <span>Logout</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+import { FiFilePlus, FiFolderPlus } from "react-icons/fi";
+import FileExplorer from "../explorer/FileExplorer";
+import { useWorkspace } from "../../context/WorkspaceContext";
+import "../../styles/sidebar.css";
+
+export default function Sidebar() {
+  const { setCreateRequest, currentWorkspace } = useWorkspace();
+
+  return (
+    <aside className="sidebar">
+      {/* HEADER */}
+      <div className="sidebar-header">
+        <span className="sidebar-title">EXPLORER</span>
+
+        <div className="sidebar-header-actions">
+          <button
+            title="New File"
+            onClick={() =>
+              setCreateRequest({ type: "file", parent: "" })
+            }
+          >
+            <FiFilePlus />
+          </button>
+
+          <button
+            title="New Folder"
+            onClick={() =>
+              setCreateRequest({ type: "folder", parent: "" })
+            }
+          >
+            <FiFolderPlus />
+          </button>
+        </div>
+      </div>
+
+      {/* WORKSPACE */}
+      <div className="workspace-name">
+        <span className="workspace-icon">📁</span>
+         {currentWorkspace?.name || "Loading..."}
+      </div>
+
+      {/* TREE */}
+      <div className="sidebar-tree">
+        <FileExplorer />
+      </div>
+    </aside>
+  );
+}
+import "../../styles/preview.css";
+
+export default function LivePreview({ url, activeFile }) {
+  if (!url || !activeFile?.endsWith(".html")) return null;
+
+  return (
+    <iframe
+      key={url} 
+      src={url}
+      className="live-preview"
+      sandbox="allow-scripts allow-same-origin"
+      title="Live Preview"
+    />
+  );
+}
+import { useEffect, useRef } from "react";
+import { Terminal } from "xterm";
+import { FitAddon } from "xterm-addon-fit";
+import "xterm/css/xterm.css";
+import { useWorkspace } from "../../context/WorkspaceContext";
+
+export default function TerminalPanel({ terminalId }) {
+  const { socketRef } = useWorkspace();
+
+  const containerRef = useRef(null);
+  const termRef = useRef(null);
+  const fitRef = useRef(null);
+
+  useEffect(() => {
+    if (!terminalId || !socketRef.current) return;
+
+    const term = new Terminal({
+      theme: {
+        background: "#1e1e1e",
+        foreground: "#ffffff",
+      },
+      fontSize: 14,
+      cursorBlink: true,
+      scrollback: 1000,
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+
+    term.open(containerRef.current);
+    fitAddon.fit();
+    term.focus();
+
+    term.onData((data) => {
+      socketRef.current.send(
+        JSON.stringify({
+          type: "input",
+          terminalId,
+          data,
+        })
+      );
+    });
+
+    const handleResize = () => {
+      setTimeout(() => {
+        fitAddon.fit();
+      }, 50);
+
+      socketRef.current.send(
+        JSON.stringify({
+          type: "resize",
+          terminalId,
+          cols: term.cols,
+          rows: term.rows,
+        })
+      );
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    const outputHandler = (e) => {
+      const msg = e.detail;
+      if (msg.terminalId === terminalId) {
+        term.write(msg.data);
+      }
+    };
+
+    window.addEventListener("terminal-output", outputHandler);
+
+    termRef.current = term;
+    fitRef.current = fitAddon;
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("terminal-output", outputHandler);
+      term.dispose();
+    };
+  }, [terminalId]);
+
+ return (
+  <div className="terminal-panel">
+    <div
+      ref={containerRef}
+      style={{ width: "100%", height: "100%" }}
+    />
+  </div>
+);
+}
+import "../../styles/terminal.css";
+import { useWorkspace } from "../../context/WorkspaceContext";
+
+export default function TerminalTabs() {
+  const {
+    terminals,
+    activeTerminal,
+    setActiveTerminal,
+    killTerminal,
+    socketRef,
+  } = useWorkspace();
+
+  if (!terminals.length) return null;
+
+  const send = (payload) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(payload));
+    }
+  };
+
+  const stopProcess = (terminalId) => {
+    send({
+      type: "input",
+      terminalId,
+      data: "\x03",
+    });
+  };
+
+  const restartTerminal = (terminalId) => {
+    send({
+      type: "restart",
+      terminalId,
+    });
+  };
+
+  const clearTerminal = (terminalId) => {
+    send({
+      type: "clear",
+      terminalId,
+    });
+  };
+
+  return (
+    <div className="terminal-tabs">
+      {terminals.map((t, i) => (
+        <div
+          key={t.id}
+          className={`terminal-tab ${
+            activeTerminal === t.id ? "active" : ""
+          }`}
+          onClick={() => setActiveTerminal(t.id)}
+        >
+          <span className="terminal-title">
+            Terminal {i + 1}
+          </span>
+
+          <div className="terminal-actions">
+            <button
+              title="Stop"
+              onClick={(e) => {
+                e.stopPropagation();
+                stopProcess(t.id);
+              }}
+            >
+              🛑
+            </button>
+
+            <button
+              title="Restart"
+              onClick={(e) => {
+                e.stopPropagation();
+                restartTerminal(t.id);
+              }}
+            >
+              🔄
+            </button>
+
+            <button
+              title="Clear"
+              onClick={(e) => {
+                e.stopPropagation();
+                clearTerminal(t.id);
+              }}
+            >
+              🧹
+            </button>
+
+            <button
+              title="Kill"
+              className="kill-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                killTerminal(t.id);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+import Clogo from '../assets/clogo.png';
+import CppLogo from '../assets/cpplogo.png';
+import PythonLogo from '../assets/pythonlogo.png';
+import JavaLogo from '../assets/javalogo.png';
+import JsLogo from '../assets/jslogo.png';
+import HTMLlogo from '../assets/htmllogo.png';
+import CSSlogo from '../assets/csslogo.png';
+
+
+export const LANGUAGE_META = {
+  cpp: {
+    label: "C++",
+    icon: CppLogo,
+    color: "#00599C",
+    monaco: "cpp",
+  },
+  c: {
+    label: "C",
+    icon: Clogo,
+    color: "#A8B9CC",
+    monaco: "c",
+  },
+  py: {
+    label: "Python",
+    icon: PythonLogo,
+    color: "#3776AB",
+    monaco: "python",
+  },
+  java: {
+    label: "Java",
+    icon: JavaLogo,
+    color: "#ED8B00",
+    monaco: "java",
+  },
+  js: {
+    label: "JavaScript",
+    icon: JsLogo,
+    color: "#F7DF1E",
+    monaco: "javascript",
+  },
+  html: {
+    label: "HTML",
+    icon: HTMLlogo,
+    color: "#E34F26",
+    monaco: "html",
+  },
+  css: {
+    label: "CSS",
+    icon: CSSlogo,
+    color: "#1572B6",
+    monaco: "css",
+  },
+};
+import { createContext, useContext, useState, useEffect } from "react";
+import api from "../utils/api";
+
+const AuthContext = createContext();
+
+export function AuthProvider({ children }) {
+  const [accessToken, setAccessToken] = useState(null);
+  const [user, setUser] = useState(null);   // ✅ ADD THIS
+  const [loading, setLoading] = useState(true);
+
+  /* ================= AUTO REFRESH ON APP LOAD ================= */
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data } = await api.post("/auth/refresh-token");
+
+        setAccessToken(data.accessToken);
+        setUser(data.user); // ✅ Now valid
+      } catch {
+        setAccessToken(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  /* ================= LOGIN ================= */
+  const login = (token, userData) => {
+    setAccessToken(token);
+    setUser(userData);
+  };
+
+  /* ================= LOGOUT ================= */
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {}
+
+    setAccessToken(null);
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        accessToken,
+        user,        // ✅ EXPOSE USER
+        login,
+        logout,
+        loading,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => useContext(AuthContext);
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import * as fileApi from "../services/fileApi";
+import { buildTree } from "../utils/buildTree";
+import { useAuth } from "../context/AuthContext";
+
+const WorkspaceContext = createContext();
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const safeTerminalId = (id) =>
+  "term_" + id.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+export function WorkspaceProvider({ userId, workspaceId, children }) {
+  const { accessToken } = useAuth();
+  /* ================= FILE STATE ================= */
+
+  const [tree, setTree] = useState(null);
+  const [openTabs, setOpenTabs] = useState([]);
+  const [activeFile, setActiveFile] = useState(null);
+  const [fileContents, setFileContents] = useState({});
+  const [dirtyFiles, setDirtyFiles] = useState(new Set());
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  const [createRequest, setCreateRequest] = useState(null);
+  const [currentWorkspace, setCurrentWorkspace] = useState(null);
+  const [currentProject, setCurrentProject] = useState(workspaceId);
+
+  /* ================= TERMINAL ================= */
+
+  const [showTerminal, setShowTerminal] = useState(false);
+  const [terminals, setTerminals] = useState([]);
+  const [activeTerminal, setActiveTerminal] = useState(null);
+
+  const socketRef = useRef(null);
+  const wsReadyRef = useRef(false);
+  const pendingCreateRef = useRef(null);
+  const pendingRunRef = useRef(null);
+  const refreshTimeoutRef = useRef(null);
+
+  /* ================= AUTOSAVE ================= */
+
+  const SAVE_DELAY = 800;
+  const saveTimersRef = useRef({});
+  const fileContentsRef = useRef({});
+  
+  useEffect(() => {
+    fileContentsRef.current = fileContents;
+  }, [fileContents]);
+
+  /* ================= WEBSOCKET ================= */
+
+useEffect(() => {
+  if (!userId || !workspaceId || !accessToken) return;
+
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const host = backendUrl.replace(/^https?:\/\//, "");
+
+  const ws = new WebSocket(
+    `${protocol}://${host}?token=${accessToken}`
+  );
+
+  socketRef.current = ws;
+
+  ws.onopen = () => {
+    wsReadyRef.current = true;
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === "output") {
+      window.dispatchEvent(
+        new CustomEvent("terminal-output", { detail: msg })
+      );
+    }
+
+   if (msg.type === "created") {
+  setTerminals((prev) =>
+    prev.some((t) => t.id === msg.terminalId)
+      ? prev
+      : [...prev, { id: msg.terminalId }]
+  );
+
+  setActiveTerminal(msg.terminalId);
+
+  // 🔥 RUN PENDING COMMAND
+  if (pendingRunRef.current) {
+    socketRef.current.send(
+      JSON.stringify({
+        type: "input",
+        terminalId: msg.terminalId,
+        data: pendingRunRef.current,
+      })
+    );
+
+    pendingRunRef.current = null;
+  }
+}
+
+    if (msg.type === "closed") {
+      setTerminals((prev) =>
+        prev.filter((t) => t.id !== msg.terminalId)
+      );
+    }
+  };
+
+  ws.onclose = () => {
+    wsReadyRef.current = false;
+  };
+
+  return () => {
+    ws.close();
+  };
+}, [userId, workspaceId, accessToken]);
+
+  const sendWS = (payload) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(payload));
+    }
+  };
+
+  /* ================= TERMINAL ACTIONS ================= */
+
+  const createTerminal = (terminalId) => {
+    const payload = {
+      type: "create",
+      terminalId,
+      workspaceId,
+    };
+
+    if (!wsReadyRef.current) {
+      pendingCreateRef.current = payload;
+      return;
+    }
+
+    sendWS(payload);
+  };
+
+  const openNewTerminal = () => {
+    setShowTerminal(true);
+    createTerminal(`term_${Date.now()}`);
+  };
+
+  const killTerminal = (terminalId) => {
+    sendWS({ type: "kill", terminalId });
+    setTerminals((prev) => prev.filter((t) => t.id !== terminalId));
+    if (activeTerminal === terminalId) setActiveTerminal(null);
+  };
+
+  /* ================= LOAD WORKSPACE ================= */
+
+  const loadWorkspace = useCallback(async () => {
+      if (!workspaceId || !accessToken) return;
+  
+      try {
+        const nodes = await fileApi.loadTree(accessToken, workspaceId);
+        setTree(buildTree(nodes));
+      } catch (err) {
+        console.error("Failed to load workspace", err);
+        setTree({ name: workspaceId, type: "folder", children: [] });
+      }
+    }, [workspaceId, accessToken]);
+
+  useEffect(() => {
+    loadWorkspace();
+  }, [loadWorkspace]);
+
+  /* ================= CREATE REQUEST ================= */
+
+  useEffect(() => {
+    if (!createRequest) return;
+
+    const { type, parent, name } = createRequest;
+    if (!name) return;
+
+    (async () => {
+      if (type === "file") await addFile(parent, name);
+      else await addFolder(parent, name);
+      setCreateRequest(null);
+    })();
+  }, [createRequest]);
+
+  /* ================= FILE SYSTEM ================= */
+
+   const addFile = async (parentPath, name) => {
+     const path = parentPath ? `${parentPath}/${name}` : name;
+     await fileApi.createFile(accessToken, workspaceId, path);
+     await loadWorkspace();
+     await openFile(path);
+   };
+
+ const addFolder = async (parentPath, name) => {
+     const path = parentPath ? `${parentPath}/${name}` : name;
+     await fileApi.createFolder(accessToken, workspaceId, path);
+     await loadWorkspace();
+   };
+
+ const openFile = async (path) => {
+     setOpenTabs((prev) =>
+       prev.includes(path) ? prev : [...prev, path]
+     );
+ 
+     setActiveFile(path);
+ 
+     if (fileContentsRef.current[path] !== undefined) return;
+ 
+     const content = await fileApi.readFile(
+       accessToken,
+       workspaceId,
+       path
+     );
+ 
+     setFileContents((prev) => ({
+       ...prev,
+       [path]: content || "",
+     }));
+   };
+
+  const updateContent = (path, content) => {
+      setFileContents((prev) => ({
+        ...prev,
+        [path]: content,
+      }));
+  
+      setDirtyFiles((prev) => {
+        const s = new Set(prev);
+        s.add(path);
+        return s;
+      });
+  
+      clearTimeout(saveTimersRef.current[path]);
+  
+      saveTimersRef.current[path] = setTimeout(async () => {
+        try {
+          await fileApi.saveFile(
+            accessToken,
+            workspaceId,
+            path,
+            content
+          );
+  
+          setDirtyFiles((prev) => {
+            const s = new Set(prev);
+            s.delete(path);
+            return s;
+          });
+        } catch (e) {
+          console.error("Save failed", e);
+        }
+      }, SAVE_DELAY);
+    };
+
+const closeTab = (path) => {
+  setOpenTabs((prev) => prev.filter((t) => t !== path));
+
+  setFileContents((prev) => {
+    const copy = { ...prev };
+    delete copy[path];
+    return copy;
+  });
+
+  if (activeFile === path) setActiveFile(null);
+};
+
+
+const renameNode = async (oldPath, newName) => {
+    const newPath = oldPath
+      .split("/")
+      .slice(0, -1)
+      .concat(newName)
+      .join("/");
+
+    await fileApi.renameNode(
+      accessToken,
+      workspaceId,
+      oldPath,
+      newPath
+    );
+
+    await loadWorkspace();
+  };
+
+  const deleteNode = async (path) => {
+      await fileApi.deleteNode(accessToken, workspaceId, path);
+      await loadWorkspace();
+    };
+
+  /* ================= RUN FILE ================= */
+
+ const runCode = async () => {
+     if (!activeFile) return;
+ 
+     setPreviewUrl(null);
+     setShowTerminal(true);
+ 
+     await fileApi.saveFile(
+       accessToken,
+       workspaceId,
+       activeFile,
+       fileContentsRef.current[activeFile] || ""
+     );
+ 
+     const terminalId = safeTerminalId(activeFile);
+     const file = `/workspace/${activeFile}`;
+ 
+     let command = "";
+ 
+     if (activeFile.endsWith(".py"))
+       command = `python3 "${file}"`;
+     else if (activeFile.endsWith(".js"))
+       command = `node "${file}"`;
+     else if (activeFile.endsWith(".cpp"))
+       command = `g++ "${file}" -o /workspace/a.out && /workspace/a.out`;
+     else if (activeFile.endsWith(".c"))
+       command = `gcc "${file}" -o /workspace/a.out && /workspace/a.out`;
+     else if (activeFile.endsWith(".java")) {
+       const dir = activeFile.split("/").slice(0, -1).join("/");
+       const cls = activeFile.split("/").pop().replace(".java", "");
+       command = `cd /workspace/${dir} && javac ${cls}.java && java ${cls}`;
+     } else return;
+ 
+     if (!terminals.find((t) => t.id === terminalId)) {
+       pendingRunRef.current = command + "\n";
+       sendWS({
+         type: "create",
+         terminalId,
+         workspaceId,
+       });
+       return;
+     }
+ 
+     setActiveTerminal(terminalId);
+     sendWS({ type: "input", terminalId, data: command + "\n" });
+   };
+
+  /* ================= RUN PROJECT ================= */
+
+const runProject = async () => {
+  setShowTerminal(true);
+
+  const res = await fetch(`${backendUrl}/api/run`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ workspaceId }),
+  });
+
+  const data = await res.json();
+
+  if (data.jobId) {
+    const terminalId = `project_${workspaceId}`;
+
+    sendWS({
+      type: "create",
+      terminalId,
+      workspaceId,
+    });
+
+    setActiveTerminal(terminalId);
+  }
+};
+
+
+  /* ================= PREVIEW ================= */
+
+  const refreshPreview = async () => {
+    if (!activeFile?.endsWith(".html")) return;
+
+    await fileApi.saveFile(
+      accessToken,
+      workspaceId,
+      activeFile,
+      fileContentsRef.current[activeFile] || ""
+    );
+
+    setPreviewUrl(
+      `${backendUrl}/preview/${userId}/${workspaceId}/${activeFile}?t=${Date.now()}`
+    );
+  };
+
+
+  useEffect(() => {
+    if (!activeFile?.endsWith(".html")) {
+      setPreviewUrl(null);
+    }
+  }, [activeFile]);
+
+  /* ================= CONTEXT ================= */
+
+  return (
+    <WorkspaceContext.Provider
+      value={{
+        tree,
+        openTabs,
+        activeFile,
+        fileContents,
+        previewUrl,
+        terminals,
+        activeTerminal,
+        setActiveTerminal,
+        createTerminal,
+        killTerminal,
+        socketRef,
+        addFile,
+        addFolder,
+        openFile,
+        updateContent,
+        renameNode,
+        deleteNode,
+        closeTab,
+        runCode,
+        runProject,
+        dirtyFiles,
+        createRequest,
+        setCreateRequest,
+        currentProject,
+        setCurrentProject,
+        openNewTerminal,
+        showTerminal,
+        setShowTerminal,
+        currentWorkspace,
+        setCurrentWorkspace,
+        refreshPreview,
+      }}
+    >
+      {children}
+    </WorkspaceContext.Provider>
+  );
+}
+
+export const useWorkspace = () => useContext(WorkspaceContext);
+import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import {
+  listWorkspaces,
+  createWorkspace,
+  deleteWorkspace,
+  renameWorkspace,
+  duplicateWorkspace,
+  pinWorkspace,
+} from "../services/workspaceApi";
+import "../styles/dashboard.css";
+
+export default function Dashboard() {
+  const { accessToken, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const [workspaces, setWorkspaces] = useState([]);
+  const [search, setSearch] = useState("");
+  const [newName, setNewName] = useState("");
+
+  const [showSearch, setShowSearch] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const [menuOpen, setMenuOpen] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  const searchRef = useRef(null);
+  const createRef = useRef(null);
+
+  /* ================= LOAD WORKSPACES ================= */
+  useEffect(() => {
+    if (loading) return;
+    if (!accessToken) return;
+
+    const load = async () => {
+      try {
+        const data = await listWorkspaces(accessToken);
+        setWorkspaces(data);
+      } catch (err) {
+        console.error("Failed to load workspaces", err);
+      }
+    };
+
+    load();
+  }, [accessToken, loading]);
+
+  /* ================= FOCUS HANDLING ================= */
+  useEffect(() => {
+    if (showSearch) searchRef.current?.focus();
+    if (showCreate) createRef.current?.focus();
+  }, [showSearch, showCreate]);
+
+  const filtered = workspaces.filter((w) =>
+    w.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  /* ================= CREATE WORKSPACE ================= */
+  const create = async () => {
+    if (!newName.trim()) return;
+
+    try {
+      console.log("Creating workspace...");
+
+      const ws = await createWorkspace(accessToken, newName.trim());
+
+      console.log("Created:", ws);
+
+      setNewName("");
+      setShowCreate(false);
+
+      navigate(`/workspace/${ws._id}`);
+    } catch (err) {
+      console.error("CREATE WORKSPACE ERROR:", err);
+      alert("Failed to create workspace");
+    }
+  };
+
+  /* ================= RENAME ================= */
+  const submitRename = async (ws) => {
+    if (!renameValue.trim()) {
+      setRenamingId(null);
+      return;
+    }
+
+    try {
+      const updated = await renameWorkspace(
+        accessToken,
+        ws._id,
+        renameValue
+      );
+
+      setWorkspaces((p) =>
+        p.map((w) => (w._id === ws._id ? updated : w))
+      );
+
+      setRenamingId(null);
+    } catch (err) {
+      console.error("Rename failed", err);
+    }
+  };
+
+  return (
+    <div className="dashboard">
+      {/* HEADER */}
+      <header className="dashboard-header">
+        <img src="/Nlogo.png" className="logo" alt="Vocodeai" />
+
+        <div className="actions">
+          {/* SEARCH */}
+          {!showSearch ? (
+            <button
+              className="icon-btn"
+              onClick={() => setShowSearch(true)}
+            >
+              🔍
+            </button>
+          ) : (
+            <input
+              ref={searchRef}
+              className="search-input"
+              placeholder="Search workspaces..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onBlur={() => setShowSearch(false)}
+            />
+          )}
+
+          {/* CREATE */}
+          {!showCreate ? (
+            <button
+              className="create-pill"
+              onClick={() => setShowCreate(true)}
+            >
+              + Create Workspace
+            </button>
+          ) : (
+            <div className="create-inline">
+              <input
+                ref={createRef}
+                placeholder="Workspace name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && create()}
+                onBlur={() => {
+                  // ✅ only close if empty (prevents accidental cancel)
+                  if (!newName.trim()) setShowCreate(false);
+                }}
+              />
+
+              <button
+                onMouseDown={(e) => e.preventDefault()} // ✅ prevents blur cancel
+                onClick={create}
+              >
+                Create
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* GRID */}
+      <section className="workspace-grid">
+        {filtered.map((ws) => (
+          <div key={ws._id} className="workspace-card">
+            <div
+              className="card-main"
+              onClick={() => navigate(`/workspace/${ws._id}`)}
+            >
+              <span className="folder">📁</span>
+
+              {renamingId === ws._id ? (
+                <input
+                  className="rename-input"
+                  autoFocus
+                  value={renameValue}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={() => submitRename(ws)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && submitRename(ws)
+                  }
+                />
+              ) : (
+                <span className="name">{ws.name}</span>
+              )}
+
+              {ws.isPinned && <span className="pin">⭐</span>}
+            </div>
+
+            {/* MENU */}
+            <div className="card-menu">
+              <button
+                className="kebab"
+                onClick={() =>
+                  setMenuOpen(menuOpen === ws._id ? null : ws._id)
+                }
+              >
+                ⋮
+              </button>
+
+              {menuOpen === ws._id && (
+                <div className="dropdown">
+                  <div
+                    onClick={() => {
+                      setRenamingId(ws._id);
+                      setRenameValue(ws.name);
+                      setMenuOpen(null);
+                    }}
+                  >
+                    ✏️ Rename
+                  </div>
+
+                  <div
+                    onClick={async () => {
+                      const copy = await duplicateWorkspace(
+                        accessToken,
+                        ws._id
+                      );
+                      setWorkspaces((p) => [copy, ...p]);
+                      setMenuOpen(null);
+                    }}
+                  >
+                    📋 Duplicate
+                  </div>
+
+                  <div
+                    onClick={async () => {
+                      const updated = await pinWorkspace(
+                        accessToken,
+                        ws._id,
+                        !ws.isPinned
+                      );
+                      setWorkspaces((p) =>
+                        p.map((w) =>
+                          w._id === ws._id ? updated : w
+                        )
+                      );
+                      setMenuOpen(null);
+                    }}
+                  >
+                    ⭐ {ws.isPinned ? "Unpin" : "Pin"}
+                  </div>
+
+                  <div
+                    className="danger"
+                    onClick={async () => {
+                      await deleteWorkspace(accessToken, ws._id);
+                      setWorkspaces((p) =>
+                        p.filter((w) => w._id !== ws._id)
+                      );
+                    }}
+                  >
+                    🗑 Delete
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import "../styles/landing.css";
+import { FaInstagram, FaLinkedin } from "react-icons/fa";
+
+export default function Landing() {
+  const navigate = useNavigate();
+
+  const [stats, setStats] = useState({
+    activeUsers: 0,
+    totalUsers: 0,
+    projectsCreated: 0,
+    uptime: 0,
+  });
+
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  /* ================= FETCH STATS ================= */
+
+  useEffect(() => {
+    const loadStats = () => {
+      fetch(`${backendUrl}/api/stats`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Stats fetch failed");
+          return res.json();
+        })
+        .then((data) => {
+          setStats({
+            activeUsers: data.activeUsers || 0,
+            totalUsers: data.totalUsers || 0,
+            projectsCreated: data.projectsCreated || 0,
+            uptime: data.uptime || 0,
+          });
+        })
+        .catch((err) => {
+          console.error("Stats error:", err.message);
+        });
+    };
+
+    loadStats();
+
+    // Auto refresh every 30 sec
+    const interval = setInterval(loadStats, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  /* ================= FORMAT UPTIME ================= */
+
+  const formatUptime = (seconds) => {
+    if (!seconds) return "0h 0m";
+
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+
+    return `${hours}h ${minutes}m`;
+  };
+
+  return (
+    <div className="landing">
+      {/* NAVBAR */}
+      <nav className="landing-nav">
+        <img src="/Nlogo.png" alt="Vocodeai" />
+        <button
+          className="primary-btn"
+          onClick={() => navigate("/login")}
+        >
+          Enter Vocodeai
+        </button>
+      </nav>
+
+      {/* HERO */}
+      <section className="hero">
+        <h1>
+          The <span>AI Workspace</span><br />
+          Built for Modern Developers
+        </h1>
+
+        <p>
+          Vocodeai is a cloud-native AI coding environment where developers
+          think, build, run, and scale software — without friction.
+        </p>
+
+        <button
+          className="primary-btn large"
+          onClick={() => navigate("/login")}
+        >
+          Start Your Journey
+        </button>
+      </section>
+
+      {/* STATS */}
+      {/* STATS */}
+<section className="stats">
+
+  <div className="stats-header">
+    <span className="live-indicator"></span>
+    <p className="live-text">Live Platform Metrics</p>
+  </div>
+
+  <div className="stat">
+    <h3>{stats.activeUsers}</h3>
+    <p>Active Developers</p>
+  </div>
+
+  <div className="stat">
+    <h3>{stats.totalUsers}</h3>
+    <p>Total Users</p>
+  </div>
+
+  <div className="stat">
+    <h3>{stats.projectsCreated}</h3>
+    <p>Projects Created</p>
+  </div>
+
+  <div className="stat">
+    <h3>{formatUptime(stats.uptime)}</h3>
+    <p>Platform Uptime</p>
+  </div>
+
+</section>
+
+      {/* VISION */}
+      <section className="vision">
+        <h2>Our Vision</h2>
+        <p>
+          We believe the future of software development is a collaboration
+          between human creativity and artificial intelligence. Vocodeai
+          empowers developers to focus on ideas — while AI handles execution.
+        </p>
+      </section>
+
+      {/* USE CASES */}
+      <section className="use-cases">
+        <h2>Who Is Vocodeai For?</h2>
+
+        <div className="use-grid">
+          <div className="use-card">
+            <span>🎓</span>
+            <h3>Students</h3>
+            <p>Learn faster with AI guidance and live execution.</p>
+          </div>
+
+          <div className="use-card">
+            <span>👨‍💻</span>
+            <h3>Developers</h3>
+            <p>Build real-world applications with AI-assisted workflows.</p>
+          </div>
+
+          <div className="use-card">
+            <span>🚀</span>
+            <h3>Startups</h3>
+            <p>Prototype and scale without infrastructure overhead.</p>
+          </div>
+
+          <div className="use-card">
+            <span>🏫</span>
+            <h3>Educators</h3>
+            <p>Teach programming interactively with real execution.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* DIFFERENTIATORS */}
+      <section className="difference">
+        <h2>What Makes Vocodeai Different?</h2>
+
+        <div className="difference-grid">
+          <div className="difference-card">
+            <span>🧠</span>
+            <h3>AI-Native Core</h3>
+            <p>Designed from day one for AI-driven development.</p>
+          </div>
+
+          <div className="difference-card">
+            <span>☁️</span>
+            <h3>Zero Setup</h3>
+            <p>Run code instantly without local configuration.</p>
+          </div>
+
+          <div className="difference-card">
+            <span>🎙️</span>
+            <h3>Voice to Code</h3>
+            <p>Convert ideas into code using natural speech.</p>
+          </div>
+
+          <div className="difference-card">
+            <span>📁</span>
+            <h3>Persistent Workspaces</h3>
+            <p>Your projects live securely in the cloud.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="final-cta">
+        <div className="final-cta-inner">
+          <p className="final-eyebrow">
+            Built for the next generation of developers
+          </p>
+
+          <h2 className="final-title">
+            Code with <span>Intelligence</span>,<br />
+            not overhead.
+          </h2>
+
+          <p className="final-subtitle">
+            Vocodeai removes setup, friction, and guesswork — so you can focus
+            on building real software with AI at your side.
+          </p>
+
+          <div className="final-actions">
+            <button
+              className="final-primary"
+              onClick={() => navigate("/login")}
+            >
+              Enter Vocodeai
+            </button>
+          </div>
+
+          <div className="final-trust">
+            Trusted by developers, students, and teams worldwide
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="footer">
+  <div className="footer-container">
+
+    {/* Brand */}
+    <div>
+      <h3>Vocodeai</h3>
+      <p>
+        A cloud-native AI workspace built for modern developers.
+        Think, build, and scale — without friction.
+      </p>
+    </div>
+
+    {/* Contact */}
+    <div>
+      <h3>Contact</h3>
+      <a href="mailto:support@Vocodeai.ai">
+        📧 Vocodeai.ai@gmail.com
+      </a>
+      <a href="tel:+919999999999">
+        📞 +91 98977 87403
+      </a>
+    </div>
+
+    {/* Social */}
+    <div>
+      <h3>Connect With Us</h3>
+      <a 
+        href="https://www.instagram.com/Vocodeai.ai" 
+        target="_blank" 
+        rel="noopener noreferrer"
+      >
+        <FaInstagram />
+      </a>
+      <a 
+        href="https://linkedin.com/" 
+        target="_blank" 
+        rel="noopener noreferrer"
+      >
+        <FaLinkedin /> 
+      </a>
+    </div>
+
+    {/* Product */}
+    <div>
+      <h3>Product</h3>
+      <a href="#">Features</a>
+      <a href="#">Documentation</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+    </div>
+
+  </div>
+
+  <div className="footer-bottom">
+    © 2026 Vocodeai AI — Built with intelligence.
+  </div>
+</footer>
+    </div>
+  );
+}
+import { useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { WorkspaceProvider, useWorkspace } from "../context/WorkspaceContext";
+import { useEffect, useState, useRef } from "react";
+import { getWorkspace } from "../services/workspaceApi";
+
+import Sidebar from "../components/layout/Sidebar";
+import Navbar from "../components/layout/navbar";
+import EditorTabs from "../components/editor/EditorTabs";
+import CodeEditor from "../components/editor/CodeEditor";
+import RunBar from "../components/editor/RunBar";
+import TerminalTabs from "../components/terminal/TerminalTabs";
+import TerminalPanel from "../components/terminal/TerminalPanel";
+import LivePreview from "../components/preview/LivePreview";
+
+import "../styles/workspace.css";
+
+/* ================= INNER LAYOUT ================= */
+
+function WorkspaceLayout() {
+  const {
+  terminals,
+  activeTerminal,
+  setActiveTerminal,
+  killTerminal,
+  previewUrl,
+  activeFile   // ✅ ADD THIS
+} = useWorkspace();
+
+
+  /* ---------- RESIZABLE SIDEBAR ---------- */
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const resizingSidebar = useRef(false);
+
+  const startSidebarResize = () => {
+    resizingSidebar.current = true;
+  };
+
+  const resizeSidebar = (e) => {
+    if (!resizingSidebar.current) return;
+    setSidebarWidth((w) =>
+      Math.min(Math.max(w + e.movementX, 180), 420)
+    );
+  };
+
+  const stopSidebarResize = () => {
+    resizingSidebar.current = false;
+  };
+
+  /* ---------- RESIZABLE TERMINAL ---------- */
+  const [terminalHeight, setTerminalHeight] = useState(240);
+  const resizingTerminal = useRef(false);
+
+  const startTerminalResize = () => {
+    resizingTerminal.current = true;
+  };
+
+  const resizeTerminal = (e) => {
+    if (!resizingTerminal.current) return;
+    setTerminalHeight((h) =>
+      Math.min(Math.max(h - e.movementY, 120), 500)
+    );
+  };
+
+  const stopTerminalResize = () => {
+    resizingTerminal.current = false;
+  };
+
+  const showTerminal = terminals.length > 0;
+
+  return (
+    <>
+      <Navbar />
+
+      <div
+        className="workspace"
+        onMouseMove={(e) => {
+          resizeSidebar(e);
+          resizeTerminal(e);
+        }}
+        onMouseUp={() => {
+          stopSidebarResize();
+          stopTerminalResize();
+        }}
+        onMouseLeave={() => {
+          stopSidebarResize();
+          stopTerminalResize();
+        }}
+      >
+        {/* ---------- SIDEBAR ---------- */}
+        <div
+          className="sidebar-wrapper"
+          style={{ width: sidebarWidth }}
+        >
+          <Sidebar />
+          <div
+            className="sidebar-resizer"
+            onMouseDown={startSidebarResize}
+          />
+        </div>
+
+        {/* ---------- MAIN AREA ---------- */}
+        <div className="workspace-main">
+          <RunBar />
+          <EditorTabs />
+
+          <div className="editor-area">
+            <CodeEditor />
+          </div>
+
+          <LivePreview url={previewUrl} activeFile={activeFile} />
+
+
+
+          {/* ---------- TERMINAL ---------- */}
+          {showTerminal && (
+            <div
+              className="terminal-section"
+              style={{ height: terminalHeight }}
+            >
+              <div
+                className="terminal-resizer"
+                onMouseDown={startTerminalResize}
+              />
+
+              <TerminalTabs
+                terminals={terminals}
+                activeTerminal={activeTerminal}
+                setActiveTerminal={setActiveTerminal}
+                closeTerminal={killTerminal}
+              />
+
+              {activeTerminal && (
+                <TerminalPanel terminalId={activeTerminal} />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ================= WORKSPACE META LOADER ================= */
+
+function WorkspaceLoader({ workspaceId, accessToken }) {
+  const { setCurrentWorkspace } = useWorkspace();
+
+  useEffect(() => {
+    if (!workspaceId || !accessToken) return;
+
+    getWorkspace(accessToken, workspaceId)
+      .then(setCurrentWorkspace)
+      .catch(() => setCurrentWorkspace(null));
+  }, [workspaceId, accessToken]);
+
+  return null;
+}
+
+/* ================= PROVIDER WRAPPER ================= */
+
+export default function Workspace() {
+  const { id: workspaceId } = useParams();
+  const { user, accessToken, loading } = useAuth();
+
+  if (loading) return null;
+  if (!user || !accessToken) return null;
+  
+
+  return (
+    <WorkspaceProvider userId={user.id} workspaceId={workspaceId}>
+      <WorkspaceLoader
+        userId={user.id}
+        workspaceId={workspaceId}
+        accessToken={accessToken}
+      />
+      <WorkspaceLayout />
+    </WorkspaceProvider>
+  );
+}
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+export async function execute({ userId, workspaceId, command }) {
+  await fetch(`${backendUrl}/api/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, workspaceId, command }),
+  });
+}
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const BASE = `${backendUrl}/api/files`;
+
+/* ================= AUTH HELPER ================= */
+
+const authHeaders = (token, isJson = true) => {
+  if (!token) {
+    throw new Error("User not authenticated");
+  }
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+  };
+
+  if (isJson) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
+};
+
+/* ================= LOAD TREE ================= */
+
+export async function loadTree(token, workspaceId) {
+  const res = await fetch(
+    `${BASE}/tree?workspaceId=${workspaceId}`,
+    {
+      headers: authHeaders(token, false),
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to load workspace tree");
+  }
+
+  return res.json();
+}
+
+/* ================= CREATE FILE ================= */
+
+export async function createFile(token, workspaceId, path) {
+  const res = await fetch(`${BASE}/create`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      workspaceId,
+      path,
+      type: "file",
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to create file");
+  return res.json();
+}
+
+export async function createFolder(token, workspaceId, path) {
+  const res = await fetch(`${BASE}/create`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      workspaceId,
+      path,
+      type: "folder",
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to create folder");
+  return res.json();
+}
+
+/* ================= READ FILE ================= */
+
+export async function readFile(token, workspaceId, path) {
+  const res = await fetch(
+    `${BASE}/read?workspaceId=${workspaceId}&path=${encodeURIComponent(path)}`,
+    {
+      headers: authHeaders(token, false),
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to read file");
+
+  const data = await res.json();
+  return data.content ?? "";
+}
+
+/* ================= SAVE FILE ================= */
+
+export async function saveFile(token, workspaceId, path, content) {
+  const res = await fetch(`${BASE}/save`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      workspaceId,
+      path,
+      content,
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to save file");
+  return res.json();
+}
+
+/* ================= RENAME ================= */
+
+export async function renameNode(
+  token,
+  workspaceId,
+  oldPath,
+  newPath
+) {
+  const res = await fetch(`${BASE}/rename`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      workspaceId,
+      oldPath,
+      newPath,
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to rename node");
+  return res.json();
+}
+
+/* ================= DELETE ================= */
+
+export async function deleteNode(token, workspaceId, path) {
+  const res = await fetch(`${BASE}/delete`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({
+      workspaceId,
+      path,
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to delete node");
+  return res.json();
+}
+export function connectTerminal(userId, workspaceId) {
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const socket = new WebSocket(`${protocol}://${backendUrl}`);
+
+  socket.onopen = () => {
+    console.log("Terminal connected");
+
+    socket.send(
+      JSON.stringify({
+        type: "create",
+        userId,
+        workspaceId,
+      })
+    );
+  };
+
+  socket.onmessage = (event) => {
+    console.log("Message from server:", event.data);
+  };
+
+  socket.onerror = (error) => {
+    console.error("WebSocket error:", error);
+  };
+
+  socket.onclose = () => {
+    console.log("Terminal disconnected");
+  };
+
+  return socket;
+}
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const BASE = `${backendUrl}/api/workspaces`;
+
+const authHeaders = (token) => ({
+  Authorization: `Bearer ${token}`,
+});
+
+/* LIST */
+export async function listWorkspaces(token) {
+  const res = await fetch(BASE, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to load workspaces");
+  return res.json();
+}
+
+/* CREATE */
+export async function createWorkspace(token, name) {
+  const res = await fetch(BASE, {
+    method: "POST",
+    credentials: "include", // ✅ ADD THIS
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Create error:", text);
+    throw new Error("Failed to create workspace");
+  }
+
+  return res.json();
+}
+
+/* DELETE */
+export async function deleteWorkspace(token, id) {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to delete workspace");
+  return res.json();
+}
+
+/* RENAME */
+export async function renameWorkspace(token, id, name) {
+  const res = await fetch(`${BASE}/${id}/rename`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ name }),
+  });
+
+  if (!res.ok) throw new Error("Failed to rename workspace");
+  return res.json();
+}
+
+/* DUPLICATE */
+export async function duplicateWorkspace(token, id) {
+  const res = await fetch(`${BASE}/${id}/duplicate`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Failed to duplicate workspace");
+  return res.json();
+}
+
+/* PIN */
+export async function pinWorkspace(token, id, isPinned) {
+  const res = await fetch(`${BASE}/${id}/pin`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token),
+    },
+    body: JSON.stringify({ isPinned }),
+  });
+
+  if (!res.ok) throw new Error("Failed to pin workspace");
+  return res.json();
+}
+
+/* GET SINGLE (EDITOR PAGE) */
+export async function getWorkspace(token, id) {
+  const res = await fetch(`${BASE}/${id}`, {
+    headers: authHeaders(token),
+  });
+
+  if (!res.ok) throw new Error("Workspace not found");
+  return res.json();
+}
+import axios from "axios";
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const api = axios.create({
+  baseURL: `${backendUrl}/api`,
+  withCredentials: true, 
+});
+
+export default api;
+export function buildTree(nodes) {
+  const root = {
+    name: "",
+    type: "folder",
+    children: [],
+  };
+
+  const map = { "": root };
+
+  for (const node of nodes) {
+    const parts = node.path.split("/");
+    let currentPath = "";
+
+    parts.forEach((part, index) => {
+      const parentPath = currentPath;
+      currentPath = parentPath ? `${parentPath}/${part}` : part;
+
+      if (!map[currentPath]) {
+        map[currentPath] = {
+          name: part,
+          type: index === parts.length - 1 ? node.type : "folder",
+          children: [],
+        };
+
+        map[parentPath].children.push(map[currentPath]);
+      }
+    });
+  }
+
+  return root;
+}
+import {
+  FaFolder,
+  FaFolderOpen,
+  FaNodeJs,
+  FaFileAlt,
+  FaJs,
+} from "react-icons/fa";
+import { SiNpm } from "react-icons/si";
+
+export function getFileIcon(name, type, isOpen = false) {
+  // Folder
+  if (type === "folder") {
+    if (name === "node_modules") return <FaNodeJs color="#8CC84B" />;
+    return isOpen ? <FaFolderOpen /> : <FaFolder />;
+  }
+
+  // Special files
+  if (name === "package.json") return <SiNpm color="#CB3837" />;
+  if (name === "package-lock.json") return <SiNpm color="#CB3837" />;
+
+  // Extensions
+  if (name.endsWith(".js")) return <FaJs color="#F7DF1E" />;
+  if (name.endsWith(".json")) return <FaFileAlt color="#fbc02d" />;
+
+  return <FaFileAlt />;
+}
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./auth/Login";
+import Signup from "./auth/Signup";
+import Dashboard from "./pages/Dashboard";
+import Workspace from "./pages/Workspace";
+import Landing from "./pages/Landing";
+import ForgotPassword from "./auth/ForgotPassword";
+import ResetPassword from "./auth/ResetPassword";
+import OAuthSuccess from "./auth/OAuthSuccess";
+
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
+/* =========================
+   PROTECTED ROUTE
+========================= */
+
+function ProtectedRoute({ children }) {
+  const { accessToken, loading } = useAuth();
+
+  if (loading) return null; // or spinner
+
+  if (!accessToken) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+/* =========================
+   PUBLIC ROUTE (Optional)
+   Prevent logged user from seeing login/signup again
+========================= */
+
+function PublicRoute({ children }) {
+  const { accessToken } = useAuth();
+
+  if (accessToken) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+/* =========================
+   APP
+========================= */
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* ===== PUBLIC ROUTES ===== */}
+
+          <Route path="/" element={<Landing />} />
+
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
+          />
+
+          <Route
+            path="/signup"
+            element={
+              <PublicRoute>
+                <Signup />
+              </PublicRoute>
+            }
+          />
+
+          <Route
+            path="/forgot"
+            element={
+              <PublicRoute>
+                <ForgotPassword />
+              </PublicRoute>
+            }
+          />
+
+          <Route
+            path="/reset"
+            element={
+              <PublicRoute>
+                <ResetPassword />
+              </PublicRoute>
+            }
+          />
+
+          <Route path="/oauth-success" element={<OAuthSuccess />} />
+
+          {/* ===== PROTECTED ROUTES ===== */}
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/workspace/:id"
+            element={
+              <ProtectedRoute>
+                <Workspace />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ===== FALLBACK ===== */}
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App";
+
+createRoot(document.getElementById("root")).render(
+  <App />
+);
+This is the frontend of my project integrate the AI feature in it and make it fully ready and keep everything in mind okay 
+format - 
+1. Struture of the file
+2. code of updated and new file 
+3. do not give me any dummy and hardcoded code.

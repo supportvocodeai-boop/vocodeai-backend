@@ -1,0 +1,136 @@
+/* MAIN CONTAINER (RIGHT SIDE PANEL) */
+.ai-container {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 380px;
+  height: 100vh;
+  background: radial-gradient(circle at top left, #001a1a, #000);
+  border-left: 1px solid rgba(0, 255, 200, 0.2);
+  display: flex;
+  flex-direction: column;
+  z-index: 999;
+  box-shadow: -10px 0 30px rgba(0, 255, 200, 0.1);
+}
+
+/* HEADER */
+.ai-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid rgba(0, 255, 200, 0.2);
+}
+
+.ai-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #00ffc3;
+}
+
+.ai-close {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: #ccc;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.ai-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* MESSAGES */
+.ai-messages {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* MESSAGE BUBBLE */
+.msg {
+  max-width: 85%;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* AI MESSAGE */
+.msg.assistant {
+  background: linear-gradient(135deg, #003333, #001a1a);
+  border: 1px solid rgba(0, 255, 200, 0.2);
+  color: #dff;
+}
+
+/* USER MESSAGE */
+.msg.user {
+  margin-left: auto;
+  background: #00ffc3;
+  color: #000;
+}
+
+/* QUICK ACTION BUTTONS */
+.ai-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 15px;
+}
+
+.ai-actions button {
+  background: transparent;
+  border: 1px solid rgba(0, 255, 200, 0.3);
+  color: #00ffc3;
+  padding: 8px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.ai-actions button:hover {
+  background: rgba(0, 255, 200, 0.1);
+}
+
+/* INPUT AREA */
+.ai-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  border-top: 1px solid rgba(0, 255, 200, 0.2);
+}
+
+/* INPUT FIELD */
+.ai-input input {
+  flex: 1;
+  padding: 12px 15px;
+  border-radius: 30px;
+  border: 1px solid rgba(0, 255, 200, 0.2);
+  background: transparent;
+  color: white;
+  outline: none;
+}
+
+/* SEND BUTTON */
+.send-btn {
+  background: #00ffc3;
+  border: none;
+  color: black;
+  padding: 10px 12px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.send-btn:hover {
+  background: #00e6b0;
+}
+
+/* LOADING */
+.ai-loading {
+  padding: 10px 15px;
+  font-size: 13px;
+  color: #00ffc3;
+}
