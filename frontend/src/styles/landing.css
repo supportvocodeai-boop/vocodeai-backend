@@ -5,6 +5,9 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
 /* Navbar */
 .navbar {
   width: 100%;
@@ -67,7 +70,7 @@
   cursor: pointer;
   transition: 0.25s ease;
   display: flex;
-  align-items: center; /* 🔥 FIX vertical misalignment */
+  align-items: center; 
 }
 
 .links li:hover {

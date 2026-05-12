@@ -18,10 +18,13 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
+
+  margin-left: 14px;
 }
 
 .logo-img {
-  width: 36px;
+  width: 92px;
+  height: 64px;
   filter: drop-shadow(0 0 10px #00ffa6);
 }
 

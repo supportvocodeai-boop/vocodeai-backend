@@ -1,7 +1,6 @@
 import Editor from "@monaco-editor/react";
 import { useWorkspace } from "../../context/WorkspaceContext";
 import { useRef } from "react";
-import { LANGUAGE_META } from "../../config/languages";
 import "../../styles/editor.css";
 
 export default function CodeEditor() {
@@ -14,14 +13,30 @@ export default function CodeEditor() {
 
   const ext = activeFile.split(".").pop();
 
-  const meta = ext ? LANGUAGE_META[ext] || {} : {};
+  // Monaco language mapping
+  const languageMap = {
+    py: "python",
+    js: "javascript",
+    ts: "typescript",
+    jsx: "javascript",
+    tsx: "typescript",
+    java: "java",
+    cpp: "cpp",
+    cc: "cpp",
+    cxx: "cpp",
+    html: "html",
+    css: "css",
+    json: "json",
+  };
+
+  const language = languageMap[ext] || "plaintext";
 
   return (
     <div className="editor-area">
       <Editor
         key={activeFile}
         theme="vs-dark"
-        language={meta.monaco || "plaintext"}
+        language={language}
         value={fileContents[activeFile] || ""}
         height="100%"
         options={{

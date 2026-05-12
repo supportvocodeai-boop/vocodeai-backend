@@ -8,6 +8,7 @@ import ForgotPassword from "./auth/ForgotPassword";
 import ResetPassword from "./auth/ResetPassword";
 import OAuthSuccess from "./auth/OAuthSuccess";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import Documentation from "./pages/Documentation";
 
 /* =========================
    PROTECTED ROUTE
@@ -47,6 +48,7 @@ export default function App() {
           <Routes>   {/* ✅ REQUIRED */}
 
             <Route path="/" element={<Landing />} />
+            <Route path="/docs" element={<Documentation />} />
 
             <Route
               path="/login"

@@ -135,22 +135,40 @@ const Landing = () => {
     },
   ];
 
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+
+    if (section) {
+      section.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
   return (
     <div>
       <nav className="navbar">
         <div className="navbar-inner">
           {/* LEFT: Logo */}
           <div className="mainlogo">
-            <img src="/Nlogo.png" alt="VocodeAI Logo" className="mainlogo-img" />
+            <img
+              src="/Nlogo.png"
+              alt="VocodeAI Logo"
+              className="mainlogo-img"
+            />
           </div>
 
           {/* RIGHT: Links + Button */}
           <div className="right-group">
             <ul className="links">
-              <li>Features</li>
-              <li>Use Cases</li>
-              <li>Pricing</li>
-              <li>Docs</li>
+              <li onClick={() => scrollToSection("features")}>Features</li>
+
+              <li onClick={() => scrollToSection("usecases")}>Use Cases</li>
+
+              <li onClick={() => scrollToSection("pricing")}>Pricing</li>
+
+              <li onClick={() => navigate("/docs")}>Docs</li>
             </ul>
 
             <button className="btn" onClick={login}>
@@ -176,7 +194,9 @@ const Landing = () => {
           </p>
 
           <div className="buttons">
-            <button className="primary" onClick={login}>Get Started</button>
+            <button className="primary" onClick={login}>
+              Get Started
+            </button>
             <button className="secondary">View Demo</button>
           </div>
         </div>
@@ -215,7 +235,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
-      <section className="features">
+      <section id="features" className="features">
         {/* Heading */}
         <div className="features-header">
           <h2>
@@ -261,7 +281,7 @@ const Landing = () => {
           ))}
         </div>
       </section>
-      <section className="possibilities">
+      <section id="usecases" className="possibilities">
         {/* HEADER */}
         <div className="poss-header">
           <h2>
@@ -329,7 +349,7 @@ const Landing = () => {
         </div>
       </section>
 
-      <section className="pricing">
+      <section id="pricing" className="pricing">
         {/* HEADER */}
         <div className="pricing-header">
           <h2>
@@ -438,8 +458,12 @@ const Landing = () => {
           {/* LEFT */}
           <div className="footer-left">
             <div className="mainlogo">
-            <img src="/Nlogo.png" alt="VocodeAI Logo" className="mainlogos-img" />
-          </div>
+              <img
+                src="/Nlogo.png"
+                alt="VocodeAI Logo"
+                className="mainlogos-img"
+              />
+            </div>
 
             <p>Build, code, and execute with AI — all in one workspace.</p>
 
