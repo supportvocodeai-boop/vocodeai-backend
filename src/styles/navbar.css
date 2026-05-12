@@ -21,7 +21,8 @@
 }
 
 .logo-img {
-  width: 36px;
+  width: 100px;
+  height:70px;
   filter: drop-shadow(0 0 10px #00ffa6);
 }
 
