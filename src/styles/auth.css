@@ -1,0 +1,441 @@
+/* ================= MAIN LAYOUT ================= */
+.auth-container {
+  display: flex;
+  height: 100vh;
+  background: radial-gradient(circle at top left, #002f26, #001a14);
+  color: white;
+  font-family: "Inter", sans-serif;
+  overflow: hidden;
+}
+
+/* ================= LEFT SIDE ================= */
+.auth-left {
+  flex: 1;
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 🌊 BACKGROUND GLOW ANIMATION */
+.auth-left::before {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0,255,170,0.25), transparent);
+  top: -100px;
+  left: -100px;
+  animation: floatGlow 8s infinite ease-in-out;
+}
+
+.auth-left::after {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(0,200,150,0.2), transparent);
+  bottom: -120px;
+  right: -100px;
+  animation: floatGlow 10s infinite ease-in-out reverse;
+}
+
+@keyframes floatGlow {
+  0% { transform: translate(0,0) scale(1); }
+  50% { transform: translate(40px, 40px) scale(1.1); }
+  100% { transform: translate(0,0) scale(1); }
+}
+
+/* ================= LOGO ================= */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  animation: fadeInUp 1s ease;
+}
+
+.logo img {
+  width: 42px;
+  filter: drop-shadow(0 0 10px #00ffa6);
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%,100% { filter: drop-shadow(0 0 8px #00ffa6); }
+  50% { filter: drop-shadow(0 0 20px #00ffa6); }
+}
+
+.logo span {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* ================= TEXT ================= */
+.auth-left h1 {
+  font-size: 48px;
+  margin-bottom: 10px;
+  animation: fadeInUp 1.2s ease;
+}
+
+.auth-left p {
+  color: #9fbdb7;
+  margin-bottom: 40px;
+  animation: fadeInUp 1.4s ease;
+}
+
+/* ================= TERMINAL ================= */
+.terminal-box {
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 14px;
+  padding: 20px;
+  width: 80%;
+  border: 1px solid rgba(0, 255, 170, 0.25);
+  backdrop-filter: blur(10px);
+  animation: fadeInUp 1.6s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ✨ SCANNING LIGHT EFFECT */
+.terminal-box::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ffa6, transparent);
+  top: 0;
+  left: 0;
+  animation: scan 3s linear infinite;
+}
+
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+/* MAC DOTS */
+.dots span {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.red { background: #ff5f56; }
+.yellow { background: #ffbd2e; }
+.green { background: #27c93f; }
+
+/* 💻 TERMINAL TEXT TYPING EFFECT */
+pre {
+  color: #7fffd4;
+  font-size: 14px;
+  margin-top: 10px;
+  white-space: pre-wrap;
+  overflow: hidden;
+  border-right: 2px solid #00ffa6;
+  width: 0;
+  animation: typing 4s steps(60, end) forwards, blink 1s infinite;
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink {
+  50% { border-color: transparent; }
+}
+
+/* ================= RIGHT SIDE ================= */
+.auth-right {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 1.2s ease;
+}
+
+/* ================= CARD ================= */
+.auth-card {
+  width: 400px;
+  background: rgba(0, 40, 30, 0.9);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 0 40px rgba(0, 255, 170, 0.1);
+  backdrop-filter: blur(12px);
+}
+
+.auth-card h2 {
+  margin-bottom: 5px;
+}
+
+.sub-text {
+  color: #9fbdb7;
+  margin-bottom: 20px;
+}
+
+/* ================= GOOGLE BUTTON ================= */
+.google-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #1f3f36;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: 0.3s;
+}
+
+.google-btn:hover {
+  background: #2a5c4f;
+}
+
+.google-btn img {
+  width: 18px;
+}
+
+/* ================= DIVIDER ================= */
+.divider {
+  text-align: center;
+  margin: 15px 0;
+  color: #6fa89c;
+}
+
+/* ================= FORM ================= */
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-size: 14px;
+  margin: 10px 0 5px;
+}
+
+input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #1f5c4c;
+  background: transparent;
+  color: white;
+  transition: 0.3s;
+}
+
+input:focus {
+  border-color: #00ffa6;
+  box-shadow: 0 0 8px rgba(0,255,170,0.4);
+  outline: none;
+}
+
+input::placeholder {
+  color: #6fa89c;
+}
+
+/* ================= FORGOT ================= */
+.forgot {
+  text-align: right;
+  margin: 10px 0;
+}
+
+.forgot span {
+  color: #00ffa6;
+  cursor: pointer;
+}
+
+/* ================= BUTTON ================= */
+.primary-btn {
+  background: linear-gradient(90deg, #00ffa6, #00cc88);
+  border: none;
+  padding: 14px;
+  border-radius: 10px;
+  margin-top: 10px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.primary-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 20px rgba(0,255,170,0.5);
+}
+
+/* ================= SWITCH ================= */
+.switch {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.switch span {
+  color: #00ffa6;
+  cursor: pointer;
+}
+
+/* ================= ERROR ================= */
+.auth-error {
+  background: #ff4d4f;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+/* ================= ANIMATIONS ================= */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================= */
+/* 📱 TABLET (≤1024px) */
+/* ============================= */
+@media (max-width: 1024px) {
+
+  .auth-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .auth-left,
+  .auth-right {
+    width: 100%;
+    padding: 40px 30px;
+  }
+
+  .auth-left {
+    align-items: center;
+    text-align: center;
+  }
+
+  .terminal-box {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 420px;
+  }
+}
+
+
+/* ============================= */
+/* 📱 MOBILE (≤768px) */
+/* ============================= */
+@media (max-width: 768px) {
+
+  .auth-container {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* 🔥 HIDE LEFT SIDE FOR CLEAN UI */
+  .auth-left {
+    display: none;
+  }
+
+  .auth-right {
+    padding: 20px;
+    min-height: 100vh;
+  }
+
+  .auth-card {
+    width: 100%;
+    padding: 25px 20px;
+    border-radius: 12px;
+  }
+
+  .auth-card h2 {
+    font-size: 22px;
+    text-align: center;
+  }
+
+  .sub-text {
+    font-size: 14px;
+    text-align: center;
+  }
+
+  /* FORM */
+  input {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  label {
+    font-size: 13px;
+  }
+
+  /* BUTTONS */
+  .primary-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .google-btn {
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* FORGOT */
+  .forgot {
+    font-size: 13px;
+  }
+
+  .switch {
+    font-size: 13px;
+  }
+}
+
+
+/* ============================= */
+/* 📱 SMALL MOBILE (≤480px) */
+/* ============================= */
+@media (max-width: 480px) {
+
+  .auth-right {
+    padding: 15px;
+  }
+
+  .auth-card {
+    padding: 20px 15px;
+  }
+
+  .auth-card h2 {
+    font-size: 20px;
+  }
+
+  .sub-text {
+    font-size: 13px;
+  }
+
+  input {
+    font-size: 13px;
+    padding: 9px;
+  }
+
+  .primary-btn {
+    font-size: 13px;
+  }
+
+  .google-btn {
+    font-size: 13px;
+  }
+}
