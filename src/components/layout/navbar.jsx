@@ -45,7 +45,7 @@ export default function Navbar() {
         className="navbar-left"
         onClick={() => navigate("/dashboard")}
       >
-        <img src="/icon.png" alt="Vocodeai" className="logo-img" />
+        <img src="/Vocodeai_logo2.png" alt="Vocodeai" className="logo-img" />
       </div>
 
       {/* CENTER */}
