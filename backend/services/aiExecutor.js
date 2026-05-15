@@ -1,4 +1,4 @@
-import * as fileService from "../services/fileService.js";
+import FileNode from "../models/FileNode.js";
 import { execInWorkspace } from "../sandbox/execService.js";
 
 export async function executeAI({
@@ -10,49 +10,99 @@ export async function executeAI({
   const results = [];
 
   for (const cmd of command.actions) {
-    switch (cmd.action) {
-      case "create_file":
-        fileService.createFile(userId, workspaceId, cmd.path);
 
-        if (cmd.content) {
-          fileService.saveFile(
-            userId,
+    switch (cmd.action) {
+
+      /* ========================================= */
+      /* CREATE FILE                               */
+      /* ========================================= */
+
+      case "create_file":
+
+        await FileNode.findOneAndUpdate(
+          {
             workspaceId,
-            cmd.path,
-            cmd.content
-          );
-        }
+            path: cmd.path,
+          },
+          {
+            workspaceId,
+            path: cmd.path,
+            type: "file",
+            content: cmd.content || "",
+          },
+          {
+            upsert: true,
+            new: true,
+          }
+        );
 
         results.push(`Created ${cmd.path}`);
+
         break;
+
+      /* ========================================= */
+      /* WRITE FILE                                */
+      /* ========================================= */
 
       case "write_file":
-        fileService.saveFile(
-          userId,
-          workspaceId,
-          cmd.path,
-          cmd.content
+
+        await FileNode.findOneAndUpdate(
+          {
+            workspaceId,
+            path: cmd.path,
+            type: "file",
+          },
+          {
+            content: cmd.content || "",
+          },
+          {
+            new: true,
+            upsert: true,
+          }
         );
+
         results.push(`Updated ${cmd.path}`);
+
         break;
 
+      /* ========================================= */
+      /* RUN CODE                                  */
+      /* ========================================= */
+
       case "run_code":
+
       case "terminal":
+
         const output = await execInWorkspace({
           userId,
           workspaceId,
           workspacePath,
           command: cmd.command,
         });
+
         results.push(output);
+
         break;
+
+      /* ========================================= */
+      /* CHAT                                      */
+      /* ========================================= */
 
       case "chat":
+
         results.push(cmd.message);
+
         break;
 
+      /* ========================================= */
+      /* UNKNOWN                                   */
+      /* ========================================= */
+
       default:
-        results.push("Unknown command");
+
+        results.push(
+          `Unknown action: ${cmd.action}`
+        );
     }
   }
 

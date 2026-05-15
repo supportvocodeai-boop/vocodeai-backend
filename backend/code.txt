@@ -74,6 +74,76 @@ redisConnection.on("connect", () => {
 redisConnection.on("error", (err) => {
   console.error("❌ Redis error:", err.message);
 });
+import path from "path";
+import Chat from "../models/Chat.js";
+import { askAI } from "../services/aiService.js";
+import { parseAI } from "../utils/aiParser.js";
+import { executeAI } from "../services/aiExecutor.js";
+
+export async function handleAI(req, res) {
+  try {
+    const { message, workspaceId } = req.body;
+    const userId = req.user.id;
+
+    const workspacePath = path.join(
+      process.cwd(),
+      "workspaces",
+      userId,
+      workspaceId
+    );
+
+    /* ================= CHAT HISTORY ================= */
+    const chats = await Chat.find({
+      userId,
+      workspaceId,
+    }).sort({ createdAt: 1 });
+
+    const history = chats.map((c) => ({
+      role: c.role,
+      content: c.content,
+    }));
+
+    /* ================= AI ================= */
+    const aiRaw = await askAI({
+      message,
+      history,
+    });
+
+    const parsed = parseAI(aiRaw);
+
+    /* ================= EXECUTE ================= */
+    const result = await executeAI({
+      userId,
+      workspaceId,
+      workspacePath,
+      command: parsed,
+    });
+
+    /* ================= SAVE ================= */
+    await Chat.create({
+      userId,
+      workspaceId,
+      role: "user",
+      content: message,
+    });
+
+    await Chat.create({
+      userId,
+      workspaceId,
+      role: "assistant",
+      content: aiRaw,
+    });
+
+    res.json({
+      success: true,
+      ai: parsed,
+      result,
+    });
+  } catch (err) {
+    console.error("AI ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+}
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
@@ -414,35 +484,38 @@ export async function saveFile(req, res) {
 
 /* ========== RENAME FILE / FOLDER ========== */
 export async function renameNode(req, res) {
-  const { workspaceId, oldPath, newPath } = req.body;
+  try {
+    const { workspaceId, oldPath, newPath } = req.body;
 
-  await FileNode.updateMany(
-    {
+    // Escape regex properly
+    const escapedOldPath = oldPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const nodes = await FileNode.find({
       workspaceId,
-      path: { $regex: `^${oldPath}` },
-    },
-    [
-      {
-        $set: {
-          path: {
-            $concat: [
-              newPath,
-              { $substrCP: ["$path", oldPath.length, { $strLenCP: "$path" }] }
-            ]
-          }
-        }
-      }
-    ]
-  );
+      path: { $regex: `^${escapedOldPath}` },
+    });
 
-  fsService.renameNode(
-    req.user.id,
-    workspaceId,
-    oldPath,
-    newPath
-  );
+    for (const node of nodes) {
+      const updatedPath = node.path.replace(oldPath, newPath);
 
-  res.json({ success: true });
+      await FileNode.updateOne(
+        { _id: node._id },
+        { path: updatedPath }
+      );
+    }
+
+    fsService.renameNode(
+      req.user.id,
+      workspaceId,
+      oldPath,
+      newPath
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("RENAME ERROR:", err);
+    res.status(500).json({ error: "Rename failed" });
+  }
 }
 
 /* ========== DELETE FILE / FOLDER ========== */
@@ -632,6 +705,19 @@ export function auth(req, res, next) {
     res.sendStatus(401);
   }
 }
+import mongoose from "mongoose";
+
+const chatSchema = new mongoose.Schema(
+  {
+    userId: String,
+    workspaceId: String,
+    role: String,
+    content: String,
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Chat", chatSchema);
 import mongoose from "mongoose";
 
 const fileNodeSchema = new mongoose.Schema({
@@ -884,6 +970,15 @@ import { redisConnection } from "../config/redis.js";
 export const codeQueue = new Queue("code-execution", {
   connection: redisConnection,
 });
+import express from "express";
+import { auth } from "../middleware/auth.js";
+import { handleAI } from "../controllers/aiController.js";
+
+const router = express.Router();
+
+router.post("/", auth, handleAI);
+
+export default router;
 import express from "express";
 import passport from "../config/passport.js";
 import {
@@ -1291,6 +1386,117 @@ export function removeTerminal(id) {
 export function getAllTerminals() {
   return terminalMap;
 }
+import * as fileService from "../services/fileService.js";
+import { execInWorkspace } from "../sandbox/execService.js";
+
+export async function executeAI({
+  userId,
+  workspaceId,
+  workspacePath,
+  command,
+}) {
+  const results = [];
+
+  for (const cmd of command.actions) {
+    switch (cmd.action) {
+      case "create_file":
+        fileService.createFile(userId, workspaceId, cmd.path);
+
+        if (cmd.content) {
+          fileService.saveFile(
+            userId,
+            workspaceId,
+            cmd.path,
+            cmd.content
+          );
+        }
+
+        results.push(`Created ${cmd.path}`);
+        break;
+
+      case "write_file":
+        fileService.saveFile(
+          userId,
+          workspaceId,
+          cmd.path,
+          cmd.content
+        );
+        results.push(`Updated ${cmd.path}`);
+        break;
+
+      case "run_code":
+      case "terminal":
+        const output = await execInWorkspace({
+          userId,
+          workspaceId,
+          workspacePath,
+          command: cmd.command,
+        });
+        results.push(output);
+        break;
+
+      case "chat":
+        results.push(cmd.message);
+        break;
+
+      default:
+        results.push("Unknown command");
+    }
+  }
+
+  return { results };
+}
+import axios from "axios";
+
+export async function askAI({ message, history }) {
+  const response = await axios.post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      model: "openai/gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `
+You are VocodeAI (advanced coding agent).
+
+IMPORTANT:
+Always return STRICT JSON.
+
+You can return MULTIPLE actions.
+
+Format:
+{
+  "actions": [
+    {
+      "action": "create_file",
+      "path": "file.py",
+      "content": "code"
+    }
+  ]
+}
+
+Rules:
+- If user asks for multiple files → generate multiple actions
+- If user says "DSA" → create files like:
+  stack.py, queue.py, linked_list.py, tree.py, graph.py
+- Always include valid code
+- Never return empty content
+- Keep code simple and correct
+`
+        },
+        ...history,
+        { role: "user", content: message },
+      ],
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+    }
+  );
+
+  return response.data.choices[0].message.content;
+}
 import fs from "fs";
 import path from "path";
 
@@ -1454,6 +1660,48 @@ export function createDockerPty(containerId) {
     }
   );
 }
+import { Worker } from "bullmq";
+import { redisConnection } from "../config/redis.js";
+import { execInWorkspace } from "../sandbox/execService.js";
+import { syncWorkspaceToDB } from "../services/syncService.js";
+
+new Worker(
+  "code-execution",
+  async (job) => {
+    const { userId, workspaceId, workspacePath, command, mode } = job.data;
+
+    if (mode === "single") {
+      const result = await execInWorkspace({
+        userId,
+        workspaceId,
+        workspacePath,
+        command,
+      });
+
+      await syncWorkspaceToDB(userId, workspaceId);
+
+      return result;
+    }
+
+    if (mode === "server") {
+      await execInWorkspace({
+        userId,
+        workspaceId,
+        workspacePath,
+        command,
+        detach: true,
+      });
+
+      return { started: true };
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 3,
+  }
+);
+
+console.log("🔥 Multi-project worker started");
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -1474,6 +1722,7 @@ import executeRoutes from "./routes/executeRoutes.js";
 import runRoutes from "./routes/runRoutes.js";
 import statsRoutes from "./routes/statsRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 
 import { setupTerminalServer } from "./terminalServer.js";
@@ -1532,6 +1781,7 @@ app.use("/api/execute", executeRoutes);
 app.use("/api/run", runRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(
   "/preview",
@@ -1545,7 +1795,7 @@ app.use(
 const server = http.createServer(app);
 setupTerminalServer(server);
 
- const PORT = process.env.PORT || 8000;
+ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () =>
   console.log(`Backend running on http://localhost:${PORT}`)
 );
@@ -1635,6 +1885,7 @@ export function setupTerminalServer(server) {
             pty: ptyProcess,
             workspaceId,
             userId,
+            buffer: "", // 🔥 store terminal output
           });
 
           /* ---------- FILE WATCHER ---------- */
@@ -1658,6 +1909,11 @@ export function setupTerminalServer(server) {
 
           /* ---------- TERMINAL OUTPUT ---------- */
           ptyProcess.onData((data) => {
+            const entry = getTerminal(terminalId);
+            if (entry) {
+              entry.buffer += data; // ✅ persist output
+            }
+
             ws.send(
               JSON.stringify({
                 type: "output",
@@ -1689,7 +1945,7 @@ export function setupTerminalServer(server) {
             JSON.stringify({
               type: "created",
               terminalId,
-              title: "bash",
+              title: `terminal-${terminalId.slice(0, 4)}`,
             })
           );
         } catch (err) {
@@ -1698,14 +1954,46 @@ export function setupTerminalServer(server) {
       }
 
       /* ================================================= */
+      /* ================= ATTACH (RECONNECT) ============= */
+      /* ================================================= */
+
+      if (msg.type === "attach") {
+        const entry = getTerminal(msg.terminalId);
+        if (!entry) return;
+
+        ws.send(
+          JSON.stringify({
+            type: "output",
+            terminalId: msg.terminalId,
+            data: entry.buffer, // 🔥 replay old output
+          })
+        );
+      }
+
+      /* ================================================= */
       /* ================= INPUT ========================= */
       /* ================================================= */
 
       if (msg.type === "input") {
         const entry = getTerminal(msg.terminalId);
-        if (entry) {
-          entry.pty.write(msg.data);
+        if (!entry) return;
+
+        const command = msg.data.trim();
+
+        /* 🔥 CUSTOM COMMANDS */
+        if (command === "cls") {
+          entry.buffer = "";
+          ws.send(
+            JSON.stringify({
+              type: "output",
+              terminalId: msg.terminalId,
+              data: "\x1Bc",
+            })
+          );
+          return;
         }
+
+        entry.pty.write(msg.data);
       }
 
       /* ================================================= */
@@ -1726,6 +2014,7 @@ export function setupTerminalServer(server) {
       if (msg.type === "clear") {
         const entry = getTerminal(msg.terminalId);
         if (entry) {
+          entry.buffer = "";
           entry.pty.write("clear\n");
         }
       }
@@ -1763,9 +2052,13 @@ export function setupTerminalServer(server) {
           pty: newPty,
           workspaceId,
           userId,
+          buffer: "",
         });
 
         newPty.onData((data) => {
+          const entry = getTerminal(msg.terminalId);
+          if (entry) entry.buffer += data;
+
           ws.send(
             JSON.stringify({
               type: "output",
@@ -1808,15 +2101,9 @@ export function setupTerminalServer(server) {
 
     ws.on("close", async () => {
       try {
-        // Kill all terminals of this connection
-        for (const [id, entry] of getAllTerminals()) {
-          if (entry.userId === userId) {
-            entry.pty.kill();
-            removeTerminal(id);
-          }
-        }
+        // ❌ DO NOT kill terminals (VS Code behavior)
 
-        // Close watchers
+        // Only close watchers
         for (const watcher of watchers.values()) {
           await watcher.close();
         }
@@ -1827,11 +2114,4 @@ export function setupTerminalServer(server) {
       }
     });
   });
-} 
-
-Format to give me the code - 
-1. Full structure of it. 
-2. full code of all the file updated and new file of it. 
-3. Do not give me any dummy and hardcoded code everything comes from the API.
-4. Give me properply since I am frustrated 
-5. after this I will send you the frontend 
+}
