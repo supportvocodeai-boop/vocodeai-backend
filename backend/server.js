@@ -149,7 +149,7 @@ const server = http.createServer(app);
 setupTerminalServer(server);
 
 const PORT =
-  process.env.PORT || 5000;
+  process.env.PORT || 8080;
 
 server.listen(PORT, () => {
   console.log(
