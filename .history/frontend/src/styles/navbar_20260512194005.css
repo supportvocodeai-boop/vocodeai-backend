@@ -1,0 +1,179 @@
+/* ================= NAVBAR ================= */
+.navbar {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+
+  background: linear-gradient(180deg, #001f1a, #001510);
+  border-bottom: 1px solid rgba(0, 255, 170, 0.08);
+  position: relative;
+  z-index: 100;
+}
+
+/* ================= LEFT ================= */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+
+  margin-left: 14px;
+}
+
+.logo-img {
+  width: 92px;
+  height: 64px;
+  filter: drop-shadow(0 0 10px #00ffa6);
+}
+
+/* ================= CENTER (TABS) ================= */
+.navbar-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  background: rgba(0, 255, 170, 0.05);
+  padding: 6px;
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 170, 0.1);
+}
+
+/* TAB */
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+
+  color: #9fbdb7;
+  font-size: 14px;
+  transition: all 0.25s ease;
+}
+
+/* ICON */
+.nav-tab svg {
+  font-size: 16px;
+}
+
+/* HOVER */
+.nav-tab:hover {
+  color: #00ffa6;
+  background: rgba(0, 255, 170, 0.08);
+}
+
+/* ACTIVE TAB (FILES) */
+.nav-tab.active {
+  background: linear-gradient(90deg, #00ffa6, #00cc88);
+  color: #001a14;
+  font-weight: 500;
+  box-shadow: 0 0 12px rgba(0, 255, 170, 0.4);
+}
+
+/* AI TAB SPECIAL */
+.ai-tab:hover {
+  background: rgba(0, 255, 170, 0.12);
+}
+
+/* ================= RIGHT ================= */
+.navbar-right {
+  position: relative;
+}
+
+/* MORE BUTTON */
+.more-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 170, 0.1);
+  background: rgba(0, 255, 170, 0.05);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.more-btn:hover {
+  background: rgba(0, 255, 170, 0.12);
+  box-shadow: 0 0 12px rgba(0, 255, 170, 0.3);
+}
+
+/* ================= DROPDOWN ================= */
+.dropdown {
+  position: absolute;
+  top: 55px;
+  right: 0;
+
+  width: 260px;
+  padding: 12px;
+
+  border-radius: 16px;
+  background: rgba(0, 30, 24, 0.95);
+  backdrop-filter: blur(16px);
+
+  border: 1px solid rgba(0, 255, 170, 0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+
+  animation: dropdownFade 0.25s ease;
+}
+
+/* ITEM */
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px 14px;
+  border-radius: 10px;
+
+  color: #c7eae3;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item svg {
+  font-size: 16px;
+}
+
+/* HOVER */
+.dropdown-item:hover {
+  background: rgba(0, 255, 170, 0.1);
+  color: #00ffa6;
+}
+
+/* SEPARATOR */
+.dropdown-separator {
+  height: 1px;
+  background: rgba(0, 255, 170, 0.1);
+  margin: 10px 0;
+}
+
+/* DANGER */
+.dropdown-item.danger {
+  color: #ff9a3c;
+}
+
+.dropdown-item.danger:hover {
+  background: rgba(255, 154, 60, 0.1);
+  color: #ff9a3c;
+}
+
+/* ================= ANIMATION ================= */
+@keyframes dropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

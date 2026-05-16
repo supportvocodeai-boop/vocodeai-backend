@@ -1,0 +1,400 @@
+import mongoose from "mongoose";
+
+export async function connectDB() {await mongoose.connect(process.env.MONGO_URI);console.log("MongoDB connected");}import dotenv from "dotenv";dotenv.config();
+
+import passport from "passport";import { Strategy as GoogleStrategy } from "passport-google-oauth20";import User from "../models/User.js";
+
+passport.use(new GoogleStrategy({clientID: process.env.GOOGLE_CLIENT_ID,clientSecret: process.env.GOOGLE_CLIENT_SECRET,callbackURL: process.env.GOOGLE_CALLBACK_URL,},async (accessToken, refreshToken, profile, done) => {try {const email = profile.emails[0].value;
+
+// 1️⃣ Check if user already linked with Google
+let user = await User.findOne({ googleId: profile.id });
+
+if (user) {
+  return done(null, user);
+}
+
+// 2️⃣ Check if email already exists (manual signup user)
+user = await User.findOne({ email });
+
+if (user) {
+  // 🔥 Attach googleId to existing user
+  user.googleId = profile.id;
+  await user.save();
+
+  return done(null, user);
+}
+
+// 3️⃣ Create completely new user
+user = await User.create({
+  googleId: profile.id,
+  email,
+  firstName: profile.name.givenName,
+  lastName: profile.name.familyName,
+  isVerified: true,
+});
+
+return done(null, user);
+
+} catch (err) {done(err, null);}}
+
+));
+
+export default passport;import IORedis from "ioredis";
+
+export const redisConnection = new IORedis({host: process.env.REDIS_HOST || "127.0.0.1",port: process.env.REDIS_PORT || 6379,maxRetriesPerRequest: null,});
+
+redisConnection.on("connect", () => {console.log("✅ Redis connected");});
+
+redisConnection.on("error", (err) => {console.error("❌ Redis error:", err.message);});import path from "path";import Chat from "../models/Chat.js";import { askAI } from "../services/aiService.js";import { parseAI } from "../utils/aiParser.js";import { executeAI } from "../services/aiExecutor.js";
+
+export async function handleAI(req, res) {try {const { message, workspaceId } = req.body;const userId = req.user.id;
+
+const workspacePath = path.join(process.cwd(),"workspaces",userId,workspaceId);
+
+/* ================= CHAT HISTORY ================= */const chats = await Chat.find({userId,workspaceId,}).sort({ createdAt: 1 });
+
+const history = chats.map((c) => ({role: c.role,content: c.content,}));
+
+/* ================= AI ================= */const aiRaw = await askAI({message,history,});
+
+const parsed = parseAI(aiRaw);
+
+/* ================= EXECUTE ================= */const result = await executeAI({userId,workspaceId,workspacePath,command: parsed,});
+
+/* ================= SAVE ================= */await Chat.create({userId,workspaceId,role: "user",content: message,});
+
+await Chat.create({userId,workspaceId,role: "assistant",content: aiRaw,});
+
+res.json({success: true,ai: parsed,result,});
+
+} catch (err) {console.error("AI ERROR:", err);res.status(500).json({ error: err.message });}}import bcrypt from "bcryptjs";import jwt from "jsonwebtoken";import User from "../models/User.js";import { generateAccessToken, generateRefreshToken } from "../utils/token.js";import { generateOTP, hashOTP } from "../utils/otp.js";import { sendEmail } from "../utils/sendEmail.js";
+
+export async function signup(req, res) {try {const { firstName, lastName, phone, email, password } = req.body;
+
+if (!firstName || !lastName || !email || !password) {return res.status(400).json({ error: "All required fields must be filled" });}
+
+const exists = await User.findOne({ email });if (exists) {return res.status(409).json({ error: "Email already registered" });}
+
+const passwordHash = await bcrypt.hash(password, 12);
+
+await User.create({firstName,lastName,phone,email,passwordHash,});
+
+res.json({ message: "Account created successfully" });
+
+} catch {res.status(500).json({ error: "Signup failed" });}}
+
+/* ================= LOGIN ================= */
+
+export async function login(req, res) {try {const { email, password } = req.body;
+
+const user = await User.findOne({ email });if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+const ok = await bcrypt.compare(password, user.passwordHash);if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+
+const accessToken = generateAccessToken(user);const refreshToken = generateRefreshToken(user);
+
+user.refreshToken = refreshToken;await user.save();
+
+res.cookie("refreshToken", refreshToken, {httpOnly: true,secure: true,sameSite: "none",path: "/",});
+
+res.json({accessToken,user: {id: user._id,email: user.email,firstName: user.firstName,},});
+
+} catch {res.status(500).json({ error: "Login failed" });}}
+
+/* ================= FORGOT PASSWORD ================= */
+
+export async function forgotPassword(req, res) {try {const { email } = req.body;
+
+const user = await User.findOne({ email });if (!user) return res.status(404).json({ error: "User not found" });
+
+const otp = generateOTP();const hashedOTP = hashOTP(otp);
+
+user.resetOTP = hashedOTP;user.resetOTPExpiry = Date.now() + 10 * 60 * 1000;await user.save();
+
+await sendEmail(email,"Password Reset OTP - Vocodeai",`
+
+res.json({ message: "OTP sent successfully" });
+
+} catch {res.status(500).json({ error: "Failed to send OTP" });}}
+
+/* ================= RESET PASSWORD ================= */
+
+export async function resetPassword(req, res) {try {const { email, otp, newPassword } = req.body;
+
+const user = await User.findOne({ email });if (!user) return res.status(400).json({ error: "Invalid request" });
+
+const hashedOTP = hashOTP(otp);
+
+if (user.resetOTP !== hashedOTP ||user.resetOTPExpiry < Date.now()) {return res.status(400).json({ error: "Invalid or expired OTP" });}
+
+user.passwordHash = await bcrypt.hash(newPassword, 12);user.resetOTP = null;user.resetOTPExpiry = null;
+
+await user.save();
+
+res.json({ message: "Password reset successful" });
+
+} catch {res.status(500).json({ error: "Reset failed" });}}
+
+/* ================= REFRESH TOKEN ================= */
+
+export async function refreshToken(req, res) {try {const token = req.cookies.refreshToken;if (!token) return res.status(401).json({ error: "No refresh token" });
+
+const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);const user = await User.findById(decoded.id);
+
+if (!user || user.refreshToken !== token) {return res.status(403).json({ error: "Invalid refresh token" });}
+
+const newAccessToken = generateAccessToken(user);const newRefreshToken = generateRefreshToken(user);
+
+user.refreshToken = newRefreshToken;await user.save();
+
+res.cookie("refreshToken", newRefreshToken, {httpOnly: true,secure: process.env.NODE_ENV === "production",sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",path: "/",});
+
+res.json({accessToken: newAccessToken,user: {id: user._id,email: user.email,firstName: user.firstName,},});
+
+} catch {res.status(403).json({ error: "Token expired or invalid" });}}
+
+/* ================= LOGOUT ================= */
+
+export async function logout(req, res) {try {const token = req.s.refreshToken;
+
+if (token) {const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);await User.findByIdAndUpdate(decoded.id, { refreshToken: null });}
+
+res.clearCookie("refreshToken");res.json({ message: "Logged out successfully" });
+
+} catch {res.clearCookie("refreshToken");res.json({ message: "Logged out" });}}import { execInWorkspace } from "../sandbox/execService.js";import path from "path";
+
+export const executeCode = async (req, res) => {try {const { userId, workspaceId, command, stdin } = req.body;
+
+if (!userId || !workspaceId || !command) {return res.status(400).json({ error: "Missing required fields" });}
+
+const workspacePath = path.join(process.cwd(),"workspaces",userId,workspaceId);
+
+const result = await execInWorkspace({workspaceId,workspacePath,command,stdin,});
+
+res.json(result);
+
+} catch (err) {console.error(err);res.status(500).json({ error: err.message });}};import FileNode from "../models/FileNode.js";import * as fsService from "../services/fileService.js";
+
+/* ========== CREATE FILE / FOLDER ========== */export async function createNode(req, res) {const { workspaceId, path, type } = req.body;
+
+await FileNode.create({workspaceId,path,type,content: type === "file" ? "" : undefined,});
+
+type === "file"? fsService.createFile(req.user.id, workspaceId, path): fsService.createFolder(req.user.id, workspaceId, path);
+
+res.json({ success: true });}
+
+/* ========== READ FILE ========== */export async function readFile(req, res) {const { workspaceId, path } = req.query;
+
+const node = await FileNode.findOne({ workspaceId, path });if (!node || node.type !== "file") {return res.status(404).json({ error: "File not found" });}
+
+const content = fsService.readFile(req.user.id,workspaceId,path);
+
+res.json({ content });}
+
+/* ========== SAVE FILE ========== */export async function saveFile(req, res) {try {const { workspaceId, path, content } = req.body;
+
+const node = await FileNode.findOneAndUpdate({ workspaceId, path, type: "file" },{ content },{ new: true });
+
+if (!node) {return res.status(404).json({ error: "File node not found" });}
+
+fsService.saveFile(req.user.id, workspaceId, path, content);
+
+res.json({ success: true });
+
+} catch (err) {console.error("SAVE FILE ERROR:", err);res.status(500).json({ error: "Failed to save file" });}}
+
+
+
+/* ========== RENAME FILE / FOLDER ========== */export async function renameNode(req, res) {try {const { workspaceId, oldPath, newPath } = req.body;
+
+// Escape regex properlyconst escapedOldPath = oldPath.replace(/[.*+?^${}()|[]\]/g, "\$&");
+
+const nodes = await FileNode.find({workspaceId,path: { $regex: ^${escapedOldPath} },});
+
+for (const node of nodes) {const updatedPath = node.path.replace(oldPath, newPath);
+
+await FileNode.updateOne({ _id: node._id },{ path: updatedPath });}
+
+fsService.renameNode(req.user.id,workspaceId,oldPath,newPath);
+
+res.json({ success: true });
+
+} catch (err) {console.error("RENAME ERROR:", err);res.status(500).json({ error: "Rename failed" });}}
+
+/* ========== DELETE FILE / FOLDER ========== */export async function deleteNode(req, res) {const { workspaceId, path } = req.body;
+
+await FileNode.deleteMany({workspaceId,path: { $regex: ^${path} }});
+
+fsService.deleteNode(req.user.id,workspaceId,path);
+
+res.json({ success: true });}
+
+/* ========== LOAD TREE ========== */export async function loadTree(req, res) {const nodes = await FileNode.find({workspaceId: req.query.workspaceId}).sort({ path: 1 });
+
+res.json(nodes);}import User from "../models/User.js";import Workspace from "../models/Workspace.js";
+
+const startTime = Date.now();
+
+export async function getStats(req, res) {const totalUsers = await User.countDocuments();const totalWorkspaces = await Workspace.countDocuments();
+
+const uptime = Math.floor((Date.now() - startTime) / 1000);
+
+res.json({activeUsers: totalUsers,totalUsers,projectsCreated: totalWorkspaces,uptime,});}import Workspace from "../models/Workspace.js";import FileNode from "../models/FileNode.js";import { ensureWorkspace, deleteWorkspace as deleteWorkspaceFS } from "../services/fileService.js";
+
+/* CREATE */export async function createWorkspace(req, res) {const ws = await Workspace.create({userId: req.user.id,name: req.body.name,});
+
+ensureWorkspace(req.user.id, ws._id.toString());res.json(ws);}
+
+/* LIST */export async function listWorkspaces(req, res) {const workspaces = await Workspace.find({ userId: req.user.id }).sort({isPinned: -1,createdAt: -1,});res.json(workspaces);}
+
+/* DELETE */export async function deleteWorkspace(req, res) {try {// 1️⃣ Delete workspace from MongoDBconst workspace = await Workspace.findOneAndDelete({_id: req.params.id,userId: req.user.id,});
+
+if (!workspace) {return res.status(404).json({ error: "Workspace not found" });}
+
+// 2️⃣ Delete all files/folders from MongoDBawait FileNode.deleteMany({workspaceId: workspace._id,});
+
+// 3️⃣ Delete workspace folder from filesystemdeleteWorkspaceFS(req.user.id, workspace._id.toString());
+
+res.json({ success: true });
+
+} catch (err) {console.error("DELETE WORKSPACE ERROR:", err);res.status(500).json({ error: "Failed to delete workspace" });}}
+
+/* RENAME */export async function renameWorkspace(req, res) {const ws = await Workspace.findOneAndUpdate({ _id: req.params.id, userId: req.user.id },{ name: req.body.name },{ new: true });
+
+if (!ws) return res.status(404).json({ error: "Not found" });res.json(ws);}
+
+/* DUPLICATE (unchanged) */export async function duplicateWorkspace(req, res) {const old = await Workspace.findOne({_id: req.params.id,userId: req.user.id,});
+
+if (!old) return res.status(404).json({ error: "Not found" });
+
+const copy = await Workspace.create({userId: req.user.id,name: ${old.name} (copy),});
+
+ensureWorkspace(req.user.id, copy._id.toString());res.json(copy);}
+
+/* PIN / UNPIN */export async function togglePin(req, res) {const ws = await Workspace.findOneAndUpdate({ _id: req.params.id, userId: req.user.id },{ isPinned: req.body.isPinned },{ new: true });
+
+if (!ws) return res.status(404).json({ error: "Not found" });res.json(ws);}
+
+Use official Node 20 image (multi-arch safe)
+
+FROM node:20-bookworm
+
+Prevent interactive prompts
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+Install additional runtimes & tools
+
+RUN apt-get update && apt-get install -y python3 python3-pip openjdk-17-jdk gcc g++ git curl maven && rm -rf /var/lib/apt/lists/*
+
+Set working directory
+
+WORKDIR /workspace
+
+Verify installations (optional but useful)
+
+RUN node -v && npm -v && java -version && mvn -v && python3 --version
+
+Start bash shell
+
+CMD ["bash"]import jwt from "jsonwebtoken";
+
+export function auth(req, res, next) {const header = req.headers.authorization;
+
+if (!header || !header.startsWith("Bearer ")) {return res.sendStatus(401);}
+
+const token = header.split(" ")[1];
+
+try {const decoded = jwt.verify(token,process.env.JWT_SECRET);
+
+req.user = decoded;next();
+
+} catch {res.sendStatus(401);}}import mongoose from "mongoose";
+
+const chatSchema = new mongoose.Schema({userId: String,workspaceId: String,role: String,content: String,},{ timestamps: true });
+
+export default mongoose.model("Chat", chatSchema);import mongoose from "mongoose";
+
+const fileNodeSchema = new mongoose.Schema({workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: "Workspace" },path: String,type: { type: String, enum: ["file", "folder"] },content: String,}, { timestamps: true });
+
+fileNodeSchema.index({ workspaceId: 1, path: 1 });
+
+export default mongoose.model("FileNode", fileNodeSchema);import mongoose from "mongoose";
+
+const userSchema = new mongoose.Schema({firstName: String,lastName: String,phone: String,email: { type: String, unique: true, required: true },
+
+passwordHash: String,
+
+googleId: String,
+
+isVerified: { type: Boolean, default: false },
+
+refreshToken: String,
+
+resetOTP: String,resetOTPExpiry: Date,
+
+},{ timestamps: true });
+
+export default mongoose.model("User", userSchema);import mongoose from "mongoose";
+
+const workspaceSchema = new mongoose.Schema({userId: {type: mongoose.Schema.Types.ObjectId,ref: "User",required: true,},name: {type: String,required: true,},type: {type: String,default: "general",},isPinned: {type: Boolean,default: false,},},{ timestamps: true });
+
+export default mongoose.model("Workspace", workspaceSchema);import jwt from "jsonwebtoken";
+
+export function auth(req, res, next) {const header = req.headers.authorization;
+
+if (!header || !header.startsWith("Bearer ")) {return res.sendStatus(401);}
+
+const token = header.split(" ")[1];
+
+try {const decoded = jwt.verify(token,process.env.JWT_SECRET);
+
+req.user = decoded;next();
+
+} catch {res.sendStatus(401);}}import fs from "fs";import path from "path";import yaml from "js-yaml";import { getImageForWorkspace } from "../sandbox/imageResolver.js";
+
+export function generateCompose(userId, projectName, project) {const services = {};
+
+for (const svc of project.services) {services[svc.name] = {image: getImageForWorkspace(),working_dir: "/app",volumes: [./${svc.path}:/app],command: svc.run,ports: svc.port ? [${svc.port}:${svc.port}] : [],tty: true,};}
+
+const compose = {version: "3.9",services,};
+
+const projectRoot = path.join("workspaces",userId,projectName);
+
+const composePath = path.join(projectRoot, "docker-compose.yml");
+
+fs.writeFileSync(composePath, yaml.dump(compose));
+
+return composePath;}import fs from "fs";import path from "path";
+
+export function detectProject(workspacePath) {const files = fs.readdirSync(workspacePath);
+
+/* ================= SPRING BOOT ================= */if (files.includes("pom.xml")) {return {type: "spring-boot",command: "mvn spring-boot",port: 8080,mode: "server",};}
+
+/* ================= NODE / MERN ================= */if (files.includes("package.json")) {const pkg = JSON.parse(fs.readFileSync(path.join(workspacePath, "package.json"),"utf-8"));
+
+if (pkg.dependencies?.react && pkg.scripts?.start) {return {type: "mern-client",command: "[ -d node_modules ] || npm install && npm start",port: 3000,mode: "server",};}
+
+if (pkg.dependencies?.express) {return {type: "node-api",command: "[ -d node_modules ] || npm install && npm start",port: 8000,mode: "server",};}
+
+if (pkg.scripts?.dev) {return {type: "node-dev",command: "[ -d node_modules ] || npm install && npm run dev",port: 3000,mode: "server",};}
+
+}
+
+/* ================= C++ PROJECT ================= */if (files.some(f => f.endsWith(".cpp"))) {return {type: "cpp",command: "g++ *.cpp -o app && ./app",mode: "single",};}
+
+/* ================= C PROJECT ================= */if (files.some(f => f.endsWith(".c"))) {return {type: "c",command: "gcc *.c -o app && ./app",mode: "single",};}
+
+return null;}import fs from "fs";import path from "path";
+
+/**
+
+Load project.json from workspace*/export function loadProject(userId, projectName) {const projectPath = path.join(process.cwd(),"workspaces",userId,projectName,"project.json");
+
+if (!fs.existsSync(projectPath)) {throw new Error("project.json not found");}
+
+return JSON.parse(fs.readFileSync(projectPath, "utf-8"));}
+
+/**
+
+Validate project services (NO workspace creation here)*/export function ensureProjectServices(userId, projectName) {const project = loadProject(userI

@@ -1,0 +1,122 @@
+/* SIDEBAR CONTAINER */
+.sidebar {
+  width: 260px;
+  height: 95vh;
+  background: linear-gradient(180deg, #0b0f0f, #050707);
+  color: #cbd5d1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(0, 255, 170, 0.2);
+  font-family: "Inter", sans-serif;
+}
+
+/* HEADER */
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 12px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #8b949e;
+}
+
+.sidebar-title {
+  font-weight: 600;
+}
+
+/* HEADER ICON BUTTONS */
+.sidebar-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sidebar-header-actions button {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: 0.2s ease;
+}
+
+.sidebar-header-actions button:hover {
+  background: rgba(0, 255, 170, 0.1);
+  color: #00ffa6;
+}
+
+/* WORKSPACE NAME */
+.workspace-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #e6edf3;
+}
+
+.workspace-icon {
+  font-size: 16px;
+}
+
+/* TREE AREA */
+.sidebar-tree {
+  flex: 1;
+  padding: 5px 0;
+  overflow-y: auto;
+}
+
+/* FILE / FOLDER ITEM */
+.file-item,
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 8px;
+  margin: 2px 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+/* HOVER EFFECT */
+.file-item:hover,
+.folder-item:hover {
+  background: rgba(0, 255, 170, 0.08);
+}
+
+/* ACTIVE FILE (MAIN GREEN STYLE LIKE IMAGE) */
+.file-item.active {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 255, 170, 0.2),
+    rgba(0, 255, 170, 0.05)
+  );
+  border: 1px solid rgba(0, 255, 170, 0.4);
+  color: #00ffa6;
+}
+
+/* FILE ICON */
+.file-icon {
+  color: #00ffa6;
+  font-size: 16px;
+}
+
+/* FOLDER ICON */
+.folder-icon {
+  color: #facc15;
+  font-size: 16px;
+}
+
+/* SCROLLBAR (OPTIONAL BUT CLEAN) */
+.sidebar-tree::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-tree::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 170, 0.2);
+  border-radius: 10px;
+}

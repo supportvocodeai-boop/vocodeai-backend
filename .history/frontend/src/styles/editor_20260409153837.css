@@ -1,0 +1,160 @@
+/* ================= TABS ================= */
+.tabs-bar {
+  display: flex;
+  background: #0f1312;
+  border-bottom: 1px solid #1a1f1d;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: #9fbdb7;
+  border-right: 1px solid #1a1f1d;
+  transition: 0.2s;
+}
+
+.tab:hover {
+  background: #141a18;
+  color: white;
+}
+
+.tab.active {
+  background: #0b0f0e;
+  color: white;
+  border-bottom: 2px solid #00ffa6;
+}
+
+/* FILE NAME */
+.file-name {
+  font-size: 14px;
+}
+
+/* DIRTY DOT */
+.dirty-dot {
+  width: 6px;
+  height: 6px;
+  background: #00ffa6;
+  border-radius: 50%;
+}
+
+/* CLOSE */
+.close {
+  margin-left: 8px;
+  opacity: 0.6;
+}
+
+.close:hover {
+  opacity: 1;
+  color: red;
+}
+
+/* ================= RUN BAR ================= */
+.run-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+
+  background: #0b0f0e;
+  border-bottom: 1px solid #1a1f1d;
+}
+
+/* LANGUAGE BADGE */
+.lang-badge {
+  background: #1a1f1d;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #66b2ff;
+  border: 1px solid #22302c;
+}
+
+/* RUN BUTTON */
+.run-btn {
+  background: linear-gradient(90deg, #00ffa6, #00cc88);
+  border: none;
+  padding: 8px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+.run-btn:hover {
+  box-shadow: 0 0 12px rgba(0,255,170,0.5);
+}
+
+/* ================= MONACO EDITOR ================= */
+.monaco-editor,
+.monaco-editor-background {
+  background-color: #0b0f0e !important;
+}
+
+/* ================= FOOTER ================= */
+.editor-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 6px 20px;
+
+  background: linear-gradient(90deg, #00ffa6, #00cc88);
+  color: #001a14;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* LEFT */
+.footer-left {
+  opacity: 0.9;
+}
+
+/* RIGHT */
+.footer-right {
+  opacity: 0.9;
+}
+
+/* WRAPPER */
+.editor-wrapper {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #0b0f0f;
+}
+
+/* HEADER */
+.editor-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  background: #0f1a1a;
+  border-bottom: 1px solid rgba(0, 255, 200, 0.2);
+  color: #00ffc3;
+  font-size: 13px;
+}
+
+/* EDITOR AREA */
+.editor-area {
+  flex: 1;
+  position: relative;
+}
+
+/* EMPTY STATE */
+.editor-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: 14px;
+}
